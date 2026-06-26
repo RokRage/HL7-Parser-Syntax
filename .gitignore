@@ -18,6 +18,12 @@ Icon?
 .claude/
 .codex/
 .agents/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+IDEAS.md
+PLAN.MD
+PLAN.md
 
 # Logs and runtime output
 logs/
