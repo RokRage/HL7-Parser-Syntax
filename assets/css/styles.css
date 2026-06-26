@@ -126,9 +126,39 @@ body {
   border-radius: 4px;
   pointer-events: none;
 }
+.logo::before {
+  content: "";
+  position: absolute;
+  top: -35%;
+  left: -85%;
+  width: 42%;
+  height: 170%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 35%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0.08) 65%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  pointer-events: none;
+  z-index: 2;
+}
 .logo:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow);
+}
+.logo:hover::before {
+  animation: logo-shine 0.55s ease-out;
+}
+@keyframes logo-shine {
+  from {
+    left: -85%;
+  }
+  to {
+    left: 140%;
+  }
 }
 .logo img {
   position: relative;
@@ -408,6 +438,31 @@ body.dark .badge {
 .segment-card.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-ghost), var(--shadow);
+}
+.seg-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1;
+}
+.seg-iter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 18px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.16);
+  color: #14b8a6;
+  border: 1px solid rgba(20, 184, 166, 0.42);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 0;
+  text-align: center;
 }
 .segment-card table {
   width: 100%;

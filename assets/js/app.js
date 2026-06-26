@@ -892,9 +892,17 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
     var segCount = model.segments.length;
     var fieldCount = 0;
+    var segmentTotals = {};
+    var segmentSeen = {};
+    for (var st = 0; st < model.segments.length; st++) {
+      var stName = model.segments[st].name;
+      segmentTotals[stName] = (segmentTotals[stName] || 0) + 1;
+    }
 
     for (var si = 0; si < model.segments.length; si++) {
       var seg = model.segments[si];
+      segmentSeen[seg.name] = (segmentSeen[seg.name] || 0) + 1;
+      var segIteration = segmentSeen[seg.name];
       var card = document.createElement("div");
       card.className = "segment-card";
       card.setAttribute("data-seg-index", String(si));
@@ -910,6 +918,13 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         seg.name +
         '">' +
         seg.name +
+        (segmentTotals[seg.name] > 1
+          ? ' <span class="seg-iter-badge" title="' +
+            escAttr(seg.name + " segment " + segIteration + " of " + segmentTotals[seg.name]) +
+            '">' +
+            segIteration +
+            "</span>"
+          : "") +
         '</span><span class="path">SEG: ' +
         seg.name +
         "</span>";
