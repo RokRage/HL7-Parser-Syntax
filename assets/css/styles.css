@@ -122,12 +122,12 @@ body {
   transform: translateY(-1px);
   box-shadow: var(--shadow);
 }
-.logo .material-symbols-rounded {
+.logo img {
   position: relative;
   z-index: 1;
-  color: var(--accent);
-  font-size: 58px;
-  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+  width: 58px;
+  height: 58px;
+  display: block;
 }
 h1 {
   font-size: 1.5rem;
