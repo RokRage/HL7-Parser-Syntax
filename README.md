@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/readme-logo.svg" alt="HL7 Message Explorer webhook logo" width="96" height="96">
+  <img src="assets/squizzle.svg" alt="HL7 Message Explorer logo" width="96" height="96">
 </p>
 
 <h1 align="center">HL7 Message Explorer</h1>
