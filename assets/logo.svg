@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144" role="img" aria-label="HL7 Message Explorer logo">
+  <rect x="18" y="18" width="108" height="108" rx="12" fill="#141b2d"/>
+  <rect x="18.5" y="18.5" width="107" height="107" rx="11.5" fill="none" stroke="#2a344d"/>
+  <path d="M53 50c10-11 28-11 38 0 5 5 7 12 6 19" fill="none" stroke="#2f6feb" stroke-width="10" stroke-linecap="round"/>
+  <path d="M91 94c-10 11-28 11-38 0-5-5-7-12-6-19" fill="none" stroke="#13a7b8" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="48" cy="72" r="8" fill="#7aa2ff"/>
+  <circle cx="96" cy="72" r="8" fill="#22d3ee"/>
+  <circle cx="72" cy="96" r="8" fill="#ffffff"/>
+</svg>

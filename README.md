@@ -1,4 +1,8 @@
-# HL7 Message Explorer
+<p align="center">
+  <img src="assets/logo.svg" alt="HL7 Message Explorer logo" width="96" height="96">
+</p>
+
+<h1 align="center">HL7 Message Explorer</h1>
 
 Browser-based HL7 v2.x message viewer and field explorer.
 
