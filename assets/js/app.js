@@ -47,35 +47,117 @@
     if (!/^[A-Z0-9]{3}$/.test(seg)) return null;
 
     var fs = seg === "MSH" ? text.charAt(3) || "|" : "|";
+    var compSep = "^";
+    var repSep = "~";
+    var subSep = "&";
+    if (seg === "MSH") {
+      var enc = text.slice(4).split(fs)[0] || "";
+      compSep = enc.charAt(0) || compSep;
+      repSep = enc.charAt(1) || repSep;
+      subSep = enc.charAt(3) || subSep;
+    }
+
     var index = null;
+    var fieldStart = null;
+    var fieldEnd = null;
     var i;
 
     if (seg === "MSH") {
-      if (offset === 3) index = 1;
+      if (offset === 3) {
+        index = 1;
+        fieldStart = 3;
+        fieldEnd = 4;
+      }
       else if (offset >= 4) {
         index = 2;
+        fieldStart = 4;
         for (i = 4; i < text.length; i++) {
-          if (i === offset) break;
-          if (text.charAt(i) === fs) index++;
+          if (text.charAt(i) === fs) {
+            if (i >= offset) {
+              fieldEnd = i;
+              break;
+            }
+            index++;
+            fieldStart = i + 1;
+          }
         }
+        if (fieldEnd == null) fieldEnd = text.length;
       }
     } else if (offset >= 3) {
       index = 0;
       for (i = 3; i < text.length; i++) {
-        if (text.charAt(i) === fs) index++;
-        if (i === offset) break;
+        if (text.charAt(i) === fs) {
+          if (i >= offset && index > 0) {
+            fieldEnd = i;
+            break;
+          }
+          index++;
+          fieldStart = i + 1;
+        }
       }
+      if (index > 0 && fieldEnd == null) fieldEnd = text.length;
     }
 
     if (!index) return null;
     var nm = fieldName(seg, index);
     if (!nm || !nm.trim()) return null;
-    return seg + "-" + index + "  " + nm.trim();
+
+    var label = seg + "-" + index + "  " + nm.trim();
+    if (fieldStart == null || fieldEnd == null || fieldEnd <= fieldStart) return label;
+
+    var raw = text.slice(fieldStart, fieldEnd);
+    var rel = Math.max(0, Math.min(offset - fieldStart, raw.length - 1));
+    var repeatIndex = 1;
+    var compIndex = 1;
+    var subIndex = 1;
+    for (i = 0; i < rel; i++) {
+      var ch = raw.charAt(i);
+      if (ch === repSep) {
+        repeatIndex++;
+        compIndex = 1;
+        subIndex = 1;
+      } else if (ch === compSep) {
+        compIndex++;
+        subIndex = 1;
+      } else if (ch === subSep) {
+        subIndex++;
+      }
+    }
+
+    var compCount = raw.split(repSep)[repeatIndex - 1]
+      ? raw.split(repSep)[repeatIndex - 1].split(compSep).length
+      : 1;
+    var compNm = componentName(seg, index, compIndex, compCount);
+    var path = seg + "-" + index;
+    if (raw.indexOf(repSep) >= 0) path += "(" + repeatIndex + ")";
+    if (raw.indexOf(compSep) >= 0 || raw.indexOf(subSep) >= 0) path += "." + compIndex;
+    if (raw.indexOf(subSep) >= 0) path += "." + subIndex;
+
+    if (compNm && (raw.indexOf(compSep) >= 0 || raw.indexOf(subSep) >= 0)) {
+      label += " / " + path + "  " + compNm;
+    } else if (path !== seg + "-" + index) {
+      label += " / " + path;
+    }
+    return label;
   }
 
   function showEditorHint(view, event) {
     var pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
     if (pos == null) {
+      hideEditorHint();
+      return;
+    }
+    var line = view.state.doc.lineAt(pos);
+    var posRect = view.coordsAtPos(pos);
+    var lineEndRect = view.coordsAtPos(line.to);
+    if (
+      !line.text ||
+      !posRect ||
+      !lineEndRect ||
+      event.clientY < posRect.top - 4 ||
+      event.clientY > posRect.bottom + 4 ||
+      (pos >= line.to && event.clientX > lineEndRect.right + 6)
+    ) {
       hideEditorHint();
       return;
     }
