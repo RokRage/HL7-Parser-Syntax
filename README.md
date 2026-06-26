@@ -45,8 +45,9 @@ assets/js/samples.js
 assets/js/hl7-fields-2x.js
 assets/js/hl7-field-desc-2x.js
 assets/js/hl7-datatypes-2x.js
+assets/vendor/codemirror/codemirror.bundle.js
 ```
 
 ## Notes
 
-No patient data is sent anywhere unless you use the Send HTTP action. Parsing and field exploration run in the browser.
+No patient data is sent anywhere unless you use the Send HTTP action. Parsing and field exploration run in the browser. CodeMirror is vendored locally so editor highlighting does not depend on a CDN.

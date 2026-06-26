@@ -6,11 +6,13 @@
   var FIELD_DESC_BY_SEGMENT = window.FIELD_DESC_BY_SEGMENT || {};
   var SAMPLES = window.HL7_SAMPLES || {};
   var SAMPLE_TITLES = window.HL7_SAMPLE_TITLES || {};
+  var STORED_MESSAGE_KEY = "hl7_message";
+  var MOBILE_VIEW_KEY = "hl7_mobile_view";
 
   var currentVersion = "2.4";
   var currentModel = { delims: null, segments: [] };
 
-  // ================= CodeMirror setup (ESM via esm.sh) =================
+  // ================= CodeMirror setup (local bundled ESM) =================
   let cmView = null;
   let plainEditor = null;
   let CM = null; // bucket for imported CM modules
@@ -23,6 +25,34 @@
   function scheduleParse() {
     clearTimeout(parseTimer);
     parseTimer = setTimeout(parseNow, 180);
+  }
+
+  function loadStoredMessage() {
+    try {
+      return localStorage.getItem(STORED_MESSAGE_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function saveStoredMessage(text) {
+    try {
+      localStorage.setItem(STORED_MESSAGE_KEY, text || "");
+    } catch (_) {}
+  }
+
+  function loadMobileView() {
+    try {
+      return localStorage.getItem(MOBILE_VIEW_KEY) || "input";
+    } catch (_) {
+      return "input";
+    }
+  }
+
+  function saveMobileView(view) {
+    try {
+      localStorage.setItem(MOBILE_VIEW_KEY, view || "input");
+    } catch (_) {}
   }
 
   var editorHintEl = null;
@@ -403,37 +433,29 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   async function ensureCodeMirror() {
     if (cmView) return cmView;
 
-    // Use esm.sh for proper ESM URLs
-    const [
-      viewMod,
-      stateMod,
-      cmdsMod
-    ] = await Promise.all([
-      import("https://esm.sh/@codemirror/view@6"),
-      import("https://esm.sh/@codemirror/state@6"),
-      import("https://esm.sh/@codemirror/commands@6")
-    ]);
+    var cmMod = window.CodeMirrorBundle;
+    if (!cmMod) throw new Error("Local CodeMirror bundle did not load.");
 
     CM = {
-      EditorView: viewMod.EditorView,
-      keymap: viewMod.keymap,
-      lineNumbers: viewMod.lineNumbers,
-      highlightActiveLine: viewMod.highlightActiveLine,
-      drawSelection: viewMod.drawSelection,
-      Decoration: viewMod.Decoration,
+      EditorView: cmMod.EditorView,
+      keymap: cmMod.keymap,
+      lineNumbers: cmMod.lineNumbers,
+      highlightActiveLine: cmMod.highlightActiveLine,
+      drawSelection: cmMod.drawSelection,
+      Decoration: cmMod.Decoration,
 
-      EditorState: stateMod.EditorState,
-      RangeSetBuilder: stateMod.RangeSetBuilder,
-      Compartment: stateMod.Compartment,
-      StateField: stateMod.StateField,
-      StateEffect: stateMod.StateEffect,
+      EditorState: cmMod.EditorState,
+      RangeSetBuilder: cmMod.RangeSetBuilder,
+      Compartment: cmMod.Compartment,
+      StateField: cmMod.StateField,
+      StateEffect: cmMod.StateEffect,
 
-      defaultKeymap: cmdsMod.defaultKeymap,
-      history: cmdsMod.history,
-      historyKeymap: cmdsMod.historyKeymap,
-      indentWithTab: cmdsMod.indentWithTab,
+      defaultKeymap: cmMod.defaultKeymap,
+      history: cmMod.history,
+      historyKeymap: cmMod.historyKeymap,
+      indentWithTab: cmMod.indentWithTab,
 
-      lineWrapping: viewMod.EditorView.lineWrapping
+      lineWrapping: cmMod.EditorView.lineWrapping
     };
 
     WrapCompartment = new CM.Compartment();
@@ -519,6 +541,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   }
 
   function setEditorText(text) {
+    saveStoredMessage(text || "");
     if (cmView) {
       cmView.dispatch({
         changes: { from: 0, to: cmView.state.doc.length, insert: text || "" }
@@ -1156,6 +1179,20 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   }
 
   // Highlight + scroll the breakdown card matching editor cursor line
+  function scrollRightPaneToSegment(card) {
+    var rightPanel = document.querySelector(".right");
+    if (!rightPanel || !card) return;
+
+    var paneRect = rightPanel.getBoundingClientRect();
+    var cardRect = card.getBoundingClientRect();
+    var top = rightPanel.scrollTop + (cardRect.top - paneRect.top);
+
+    rightPanel.scrollTo({
+      top: Math.max(0, top - 8),
+      behavior: "smooth"
+    });
+  }
+
   function highlightSegment(segIdx) {
     var tree = document.getElementById("tree");
     if (!tree) return;
@@ -1164,7 +1201,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       var on = String(i) === String(segIdx);
       cards[i].classList.toggle("active", on);
       if (on && cards[i].style.display !== "none") {
-        cards[i].scrollIntoView({ block: "nearest", behavior: "smooth" });
+        scrollRightPaneToSegment(cards[i]);
       }
     }
   }
@@ -1502,6 +1539,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     stripeLight: "#eef1f6",
     stripeDark: "#1b2433",
     pageGutter: 8,
+    uiStyle: "default",
+    uiDensity: "default",
     smoothScroll: true,
     hintMode: "float"
   };
@@ -1515,6 +1554,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var out = {};
     for (var k in SETTINGS_DEFAULTS) {
       out[k] = k in s ? s[k] : SETTINGS_DEFAULTS[k];
+    }
+    if ((out.uiStyle === "compact" || out.uiStyle === "spacious") && !("uiDensity" in s)) {
+      out.uiDensity = out.uiStyle;
+      out.uiStyle = "default";
     }
     return out;
   }
@@ -1541,6 +1584,26 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     document.documentElement.style.setProperty("--page-gutter", gutter + "px");
   }
 
+  function applyUiStyle() {
+    var style = settings.uiStyle || "default";
+    var styles = ["clinical", "clinical-blue", "paper", "lab-light", "console"];
+    styles.forEach(function (name) {
+      document.body.classList.remove("ui-style-" + name);
+    });
+    if (styles.indexOf(style) >= 0) {
+      document.body.classList.add("ui-style-" + style);
+    }
+    applyStripe();
+  }
+
+  function applyUiDensity() {
+    var density = settings.uiDensity || "default";
+    document.body.classList.remove("ui-density-compact", "ui-density-spacious");
+    if (density === "compact" || density === "spacious") {
+      document.body.classList.add("ui-density-" + density);
+    }
+  }
+
   function setupSettings() {
     var overlay = document.getElementById("settingsOverlay");
     var btnOpen = document.getElementById("btnSettings");
@@ -1552,6 +1615,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var inDark = document.getElementById("setStripeDark");
     var inGutter = document.getElementById("setPageGutter");
     var outGutter = document.getElementById("setPageGutterValue");
+    var inStyle = document.getElementById("setUiStyle");
+    var inDensity = document.getElementById("setUiDensity");
     var inSmooth = document.getElementById("setSmoothScroll");
     var inHint = document.getElementById("setHintMode");
     if (!overlay || !btnOpen) return;
@@ -1562,6 +1627,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       inDark.value = settings.stripeDark;
       if (inGutter) inGutter.value = String(settings.pageGutter);
       if (outGutter) outGutter.textContent = settings.pageGutter + "px";
+      if (inStyle) inStyle.value = settings.uiStyle || "default";
+      if (inDensity) inDensity.value = settings.uiDensity || "default";
       if (inSmooth) inSmooth.checked = settings.smoothScroll !== false;
       if (inHint) inHint.value = settings.hintMode || "float";
     }
@@ -1618,12 +1685,28 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         applyLayoutSettings();
       });
     }
+    if (inStyle) {
+      inStyle.addEventListener("change", function () {
+        settings.uiStyle = inStyle.value || "default";
+        saveSettings();
+        applyUiStyle();
+      });
+    }
+    if (inDensity) {
+      inDensity.addEventListener("change", function () {
+        settings.uiDensity = inDensity.value || "default";
+        saveSettings();
+        applyUiDensity();
+      });
+    }
     btnReset.addEventListener("click", function () {
       settings = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS));
       saveSettings();
       syncInputs();
       applyStripe();
       applyLayoutSettings();
+      applyUiStyle();
+      applyUiDensity();
     });
   }
 
@@ -1934,14 +2017,51 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     }
   }
 
+  function setupMobilePaneTabs() {
+    var panes = {
+      input: document.querySelector('[data-pane="input"]'),
+      breakdown: document.querySelector('[data-pane="breakdown"]')
+    };
+    var tabs = {
+      input: document.getElementById("btnTabInput"),
+      breakdown: document.getElementById("btnTabBreakdown")
+    };
+
+    function render(view) {
+      var active = view === "breakdown" ? "breakdown" : "input";
+      Object.keys(panes).forEach(function (key) {
+        if (panes[key]) panes[key].classList.toggle("mobile-active", key === active);
+        if (tabs[key]) {
+          tabs[key].classList.toggle("active", key === active);
+          tabs[key].setAttribute("aria-selected", key === active ? "true" : "false");
+        }
+      });
+    }
+
+    var currentView = loadMobileView();
+    render(currentView);
+
+    Object.keys(tabs).forEach(function (key) {
+      if (!tabs[key]) return;
+      tabs[key].addEventListener("click", function () {
+        currentView = key;
+        render(currentView);
+        saveMobileView(currentView);
+      });
+    });
+  }
+
   async function bindUI() {
     setupGutter();
     setupSettings();
     setupHttpSender();
     setupSmoothScroll();
+    setupMobilePaneTabs();
     applyFontSize();
     applyStripe();
     applyLayoutSettings();
+    applyUiStyle();
+    applyUiDensity();
 
     var btnFontUp = document.getElementById("btnFontUp");
     var btnFontDown = document.getElementById("btnFontDown");
@@ -1966,6 +2086,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     }
 
     function loadInitialMessage() {
+      var storedMsg = loadStoredMessage();
+
       // Populate sample dropdown
       populateSamples();
 

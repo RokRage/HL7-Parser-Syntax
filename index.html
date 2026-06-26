@@ -7,7 +7,7 @@
     <title>HL7 Message Explorer</title>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400..600,0,0" />
-    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/styles.css?v=breakdown-layout-1" />
 </head>
 
 <body>
@@ -58,14 +58,29 @@
                 </div>
             </header>
 
+            <div class="mobile-pane-tabs" role="tablist" aria-label="Mobile panes">
+                <button id="btnTabInput" class="mobile-pane-tab active" type="button" role="tab"
+                    aria-selected="true" aria-controls="pane-input">
+                    HL7 Input
+                </button>
+                <button id="btnTabBreakdown" class="mobile-pane-tab" type="button" role="tab"
+                    aria-selected="false" aria-controls="pane-breakdown">
+                    Breakdown
+                </button>
+            </div>
+
             <div class="grid">
-               <section class="pane">
+               <section id="pane-input" class="pane pane-input" data-pane="input">
                     <header>
                         <h2 style="display:flex; align-items:center; gap:12px;">
                             HL7 Input
                             <div id="headerHintBox" class="header-hint" hidden></div>
                         </h2>
-                        <div class="font-controls">
+                        <div class="pane-controls">
+                            <button id="btnToggleInputPane" class="ghost icon-only pane-toggle" title="Collapse HL7 Input"
+                                aria-label="Collapse HL7 Input" aria-expanded="true">
+                                <span class="pane-toggle-glyph" aria-hidden="true">^</span>
+                            </button>
                             <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
                             <span id="fontSizeLabel" class="font-size-label">13px</span>
                             <button id="btnFontUp" class="icon-btn-sq" title="Increase font size">A+</button>
@@ -81,12 +96,18 @@
                 <div class="gutter" id="gutter" role="separator" aria-orientation="vertical"
                     title="Drag to resize"></div>
 
-                <section class="pane">
+                <section id="pane-breakdown" class="pane pane-breakdown" data-pane="breakdown">
                     <header>
                         <h2>Breakdown</h2>
-                        <div class="meta">
+                        <div class="pane-controls">
+                            <button id="btnToggleBreakdownPane" class="ghost icon-only pane-toggle" title="Collapse Breakdown"
+                                aria-label="Collapse Breakdown" aria-expanded="true">
+                                <span class="pane-toggle-glyph" aria-hidden="true">^</span>
+                            </button>
+                            <div class="meta">
                             <span class="badge" id="badgeSeg">0 segments</span>
                             <span class="badge" id="badgeFld">0 fields</span>
+                            </div>
                         </div>
                     </header>
                     <div class="search-bar">
@@ -131,7 +152,27 @@
                     <span>Row colour — Dark mode</span>
                     <input type="color" id="setStripeDark" />
                 </label>
+                <div class="setting-group-title">Appearance</div>
+                <label class="setting-row">
+                    <span>UI style</span>
+                    <select id="setUiStyle">
+                        <option value="default">Default</option>
+                        <option value="clinical">Clinical</option>
+                        <option value="clinical-blue">Clinical Blue</option>
+                        <option value="paper">Paper</option>
+                        <option value="lab-light">Lab Light</option>
+                        <option value="console">Console</option>
+                    </select>
+                </label>
                 <div class="setting-group-title">Layout</div>
+                <label class="setting-row">
+                    <span>Spacing</span>
+                    <select id="setUiDensity">
+                        <option value="default">Default</option>
+                        <option value="compact">Compact</option>
+                        <option value="spacious">Spacious</option>
+                    </select>
+                </label>
                 <label class="setting-row setting-range-row">
                     <span>Side gutter</span>
                     <input type="range" id="setPageGutter" min="0" max="48" step="1" />
@@ -195,6 +236,7 @@
     <script src="assets/js/hl7-datatypes-2x.js"></script>
     <script src="assets/js/hl7-field-desc-2x.js"></script>
     <script src="assets/js/samples.js"></script>
+    <script src="assets/vendor/codemirror/codemirror.bundle.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
 
