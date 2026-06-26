@@ -504,6 +504,20 @@ body.dark .badge {
   line-height: 1.4;
   color: var(--ink);
 }
+.editor-field-hint {
+  position: fixed;
+  z-index: 1200;
+  pointer-events: none;
+  max-width: 320px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-elev);
+  color: var(--ink);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  font: 700 12px var(--mono);
+  white-space: nowrap;
+}
 
 /* Repeat carousel (multi-repeat fields) */
 .rep-nav {

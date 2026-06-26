@@ -24,6 +24,83 @@
     parseTimer = setTimeout(parseNow, 180);
   }
 
+  var editorHintEl = null;
+
+  function ensureEditorHint() {
+    if (editorHintEl) return editorHintEl;
+    editorHintEl = document.createElement("div");
+    editorHintEl.className = "editor-field-hint";
+    editorHintEl.hidden = true;
+    document.body.appendChild(editorHintEl);
+    return editorHintEl;
+  }
+
+  function hideEditorHint() {
+    if (editorHintEl) editorHintEl.hidden = true;
+  }
+
+  function fieldAtEditorPos(state, pos) {
+    var line = state.doc.lineAt(pos);
+    var text = line.text;
+    var offset = pos - line.from;
+    var seg = text.slice(0, 3);
+    if (!/^[A-Z0-9]{3}$/.test(seg)) return null;
+
+    var fs = seg === "MSH" ? text.charAt(3) || "|" : "|";
+    var index = null;
+    var i;
+
+    if (seg === "MSH") {
+      if (offset === 3) index = 1;
+      else if (offset >= 4) {
+        index = 2;
+        for (i = 4; i < text.length; i++) {
+          if (i === offset) break;
+          if (text.charAt(i) === fs) index++;
+        }
+      }
+    } else if (offset >= 3) {
+      index = 0;
+      for (i = 3; i < text.length; i++) {
+        if (text.charAt(i) === fs) index++;
+        if (i === offset) break;
+      }
+    }
+
+    if (!index) return null;
+    var nm = fieldName(seg, index);
+    if (!nm || !nm.trim()) return null;
+    return seg + "-" + index + "  " + nm.trim();
+  }
+
+  function showEditorHint(view, event) {
+    var pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+    if (pos == null) {
+      hideEditorHint();
+      return;
+    }
+    var label = fieldAtEditorPos(view.state, pos);
+    if (!label) {
+      hideEditorHint();
+      return;
+    }
+
+    var el = ensureEditorHint();
+    el.textContent = label;
+    el.hidden = false;
+
+    var pad = 12;
+    var x = event.clientX + pad;
+    var y = event.clientY + pad;
+    var rect = el.getBoundingClientRect();
+    var vw = document.documentElement.clientWidth;
+    var vh = document.documentElement.clientHeight;
+    if (x + rect.width + 8 > vw) x = event.clientX - rect.width - pad;
+    if (y + rect.height + 8 > vh) y = event.clientY - rect.height - pad;
+    el.style.left = Math.max(8, x) + "px";
+    el.style.top = Math.max(8, y) + "px";
+  }
+
 function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   const cls = {
     seg: Decoration.mark({ class: "cm-hl7-seg" }),
@@ -206,6 +283,17 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
             var head = update.state.selection.main.head;
             var lineNo = update.state.doc.lineAt(head).number;
             highlightSegment(segIndexForLine(update.state, lineNo));
+          }
+        }),
+        CM.EditorView.domEventHandlers({
+          mousemove: function (event, view) {
+            showEditorHint(view, event);
+          },
+          mouseleave: function () {
+            hideEditorHint();
+          },
+          mousedown: function () {
+            hideEditorHint();
           }
         }),
         WrapCompartment.of(CM.lineWrapping), // start with wrapping on
