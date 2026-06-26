@@ -60,10 +60,21 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Smooth theme transitions (Targeted for performance) */
+body, .pane, .modal, .modal-head, .modal-foot, header, footer,
+.segment-card, th, td, .badge, .pill, button, input, textarea, select, .editable-raw,
+.search-bar, .rep-block, .cm-editor, .cm-gutters {
+  transition-property: background-color, border-color, color, box-shadow, fill, stroke;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
 }
 
 /* App + container */
@@ -395,6 +406,7 @@ textarea {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Stats */
@@ -496,6 +508,28 @@ body.dark .badge {
   font-weight: 700;
   border: 1px solid var(--pill-border);
   margin-right: 6px;
+}
+.cm-hl7-id {
+  color: var(--hl7-id);
+  font-weight: 500;
+}
+.cm-hl7-hover {
+  background-color: var(--accent-ghost);
+  border-bottom: 2px solid var(--accent);
+  border-radius: 2px;
+}
+.header-hint {
+  font-size: 13px;
+  font-family: var(--mono);
+  font-weight: normal;
+  color: var(--accent);
+  background: var(--accent-ghost);
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
 }
 .pill-input {
   border: none;
@@ -851,9 +885,15 @@ tr.field-row.path-hit > td:first-child {
   justify-content: center;
   z-index: 2000;
   padding: 16px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 .modal-overlay[hidden] {
-  display: none;
+  display: flex !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 .modal {
   width: 100%;
@@ -864,6 +904,13 @@ tr.field-row.path-hit > td:first-child {
   border-radius: 16px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  transform: scale(1);
+  opacity: 1;
+}
+.modal-overlay[hidden] .modal {
+  transform: scale(0.95);
+  opacity: 0;
 }
 .send-modal {
   max-width: 560px;
@@ -1032,6 +1079,16 @@ body.dark .right::-webkit-scrollbar-thumb {
   border-bottom-right-radius: var(--radius);
   overflow: hidden; /* CM manages scroll */
   background: var(--input-bg);
+}
+
+.cm-host > .plain-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 /* Basic CM view alignment with your theme */

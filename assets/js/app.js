@@ -12,6 +12,7 @@
 
   // ================= CodeMirror setup (ESM via esm.sh) =================
   let cmView = null;
+  let plainEditor = null;
   let CM = null; // bucket for imported CM modules
   let parseTimer = null;
 
@@ -37,6 +38,57 @@
 
   function hideEditorHint() {
     if (editorHintEl) editorHintEl.hidden = true;
+    var headerBox = document.getElementById("headerHintBox");
+    if (headerBox) headerBox.hidden = true;
+    var footerBox = document.getElementById("footerHintBox");
+    if (footerBox) footerBox.hidden = true;
+    if (typeof cmView !== 'undefined' && cmView) updateTargetHighlight(cmView, null, null);
+  }
+
+  function createPlainEditor() {
+    if (plainEditor) return plainEditor;
+    var host = document.getElementById("cmEditor");
+    if (!host) return null;
+
+    host.innerHTML = "";
+    plainEditor = document.createElement("textarea");
+    plainEditor.className = "plain-editor";
+    plainEditor.spellcheck = false;
+    plainEditor.autocapitalize = "off";
+    plainEditor.autocomplete = "off";
+    plainEditor.autocorrect = "off";
+    plainEditor.wrap = wrapOn ? "soft" : "off";
+
+    plainEditor.addEventListener("input", scheduleParse);
+    plainEditor.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        parseNow();
+      }
+    });
+
+    function syncPlainSelection() {
+      var head = plainEditor.selectionStart || 0;
+      var lineNo = plainEditor.value.slice(0, head).split(/\r\n?|\n/).length;
+      highlightSegment(segIndexForText(plainEditor.value, lineNo));
+    }
+
+    plainEditor.addEventListener("click", syncPlainSelection);
+    plainEditor.addEventListener("keyup", syncPlainSelection);
+    plainEditor.addEventListener("select", syncPlainSelection);
+    plainEditor.addEventListener("mousemove", hideEditorHint);
+    plainEditor.addEventListener("mouseleave", hideEditorHint);
+    plainEditor.addEventListener("mousedown", hideEditorHint);
+
+    host.appendChild(plainEditor);
+    return plainEditor;
+  }
+
+  function updateTargetHighlight(view, from, to) {
+    if (!CM || !CM.hoverHighlightEffect) return;
+    view.dispatch({
+      effects: CM.hoverHighlightEffect.of({ from: from, to: to })
+    });
   }
 
   function fieldAtEditorPos(state, pos) {
@@ -103,7 +155,9 @@
     if (!nm || !nm.trim()) return null;
 
     var label = seg + "-" + index + "  " + nm.trim();
-    if (fieldStart == null || fieldEnd == null || fieldEnd <= fieldStart) return label;
+    if (fieldStart == null || fieldEnd == null || fieldEnd <= fieldStart) {
+      return { label: label, from: null, to: null };
+    }
 
     var raw = text.slice(fieldStart, fieldEnd);
     var rel = Math.max(0, Math.min(offset - fieldStart, raw.length - 1));
@@ -138,7 +192,28 @@
     } else if (path !== seg + "-" + index) {
       label += " / " + path;
     }
-    return label;
+
+    var chunkStart = 0;
+    var chunkEnd = raw.length;
+    var seps = [repSep, compSep, subSep];
+    for (var j = rel - 1; j >= 0; j--) {
+      if (seps.indexOf(raw.charAt(j)) >= 0) {
+        chunkStart = j + 1;
+        break;
+      }
+    }
+    for (var k = rel; k < raw.length; k++) {
+      if (seps.indexOf(raw.charAt(k)) >= 0) {
+        chunkEnd = k;
+        break;
+      }
+    }
+
+    return {
+      label: label,
+      from: line.from + fieldStart + chunkStart,
+      to: line.from + fieldStart + chunkEnd
+    };
   }
 
   function showEditorHint(view, event) {
@@ -161,26 +236,51 @@
       hideEditorHint();
       return;
     }
-    var label = fieldAtEditorPos(view.state, pos);
-    if (!label) {
+    var labelInfo = fieldAtEditorPos(view.state, pos);
+    if (!labelInfo || !labelInfo.label) {
       hideEditorHint();
       return;
     }
 
-    var el = ensureEditorHint();
-    el.textContent = label;
-    el.hidden = false;
+    updateTargetHighlight(view, labelInfo.from, labelInfo.to);
 
-    var pad = 12;
-    var x = event.clientX + pad;
-    var y = event.clientY + pad;
-    var rect = el.getBoundingClientRect();
-    var vw = document.documentElement.clientWidth;
-    var vh = document.documentElement.clientHeight;
-    if (x + rect.width + 8 > vw) x = event.clientX - rect.width - pad;
-    if (y + rect.height + 8 > vh) y = event.clientY - rect.height - pad;
-    el.style.left = Math.max(8, x) + "px";
-    el.style.top = Math.max(8, y) + "px";
+    var floatEl = document.getElementById("editorHint");
+    var headerBox = document.getElementById("headerHintBox");
+    var footerBox = document.getElementById("footerHintBox");
+
+    if (settings.hintMode === "header") {
+      if (floatEl) floatEl.hidden = true;
+      if (footerBox) footerBox.hidden = true;
+      if (headerBox) {
+        headerBox.textContent = labelInfo.label;
+        headerBox.hidden = false;
+      }
+    } else if (settings.hintMode === "footer") {
+      if (floatEl) floatEl.hidden = true;
+      if (headerBox) headerBox.hidden = true;
+      if (footerBox) {
+        footerBox.textContent = labelInfo.label;
+        footerBox.hidden = false;
+      }
+    } else {
+      if (headerBox) headerBox.hidden = true;
+      if (footerBox) footerBox.hidden = true;
+
+      var el = ensureEditorHint();
+      el.textContent = labelInfo.label;
+      el.hidden = false;
+
+      var pad = 12;
+      var x = event.clientX + pad;
+      var y = event.clientY + pad;
+      var rect = el.getBoundingClientRect();
+      var vw = document.documentElement.clientWidth;
+      var vh = document.documentElement.clientHeight;
+      if (x + rect.width + 8 > vw) x = event.clientX - rect.width - pad;
+      if (y + rect.height + 8 > vh) y = event.clientY - rect.height - pad;
+      el.style.left = Math.max(8, x) + "px";
+      el.style.top = Math.max(8, y) + "px";
+    }
   }
 
 function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
@@ -325,6 +425,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       EditorState: stateMod.EditorState,
       RangeSetBuilder: stateMod.RangeSetBuilder,
       Compartment: stateMod.Compartment,
+      StateField: stateMod.StateField,
+      StateEffect: stateMod.StateEffect,
 
       defaultKeymap: cmdsMod.defaultKeymap,
       history: cmdsMod.history,
@@ -335,6 +437,24 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     };
 
     WrapCompartment = new CM.Compartment();
+
+    CM.hoverHighlightEffect = CM.StateEffect.define();
+    CM.hoverHighlightField = CM.StateField.define({
+      create() { return CM.Decoration.none; },
+      update(decos, tr) {
+        decos = decos.map(tr.changes);
+        for (let e of tr.effects) {
+          if (e.is(CM.hoverHighlightEffect)) {
+            if (e.value.from == null || e.value.from === e.value.to) return CM.Decoration.none;
+            return CM.Decoration.set([
+              CM.Decoration.mark({class: "cm-hl7-hover"}).range(e.value.from, e.value.to)
+            ]);
+          }
+        }
+        return decos;
+      },
+      provide: f => CM.EditorView.decorations.from(f)
+    });
 
     const host = document.getElementById("cmEditor");
     const startDoc = "";
@@ -351,6 +471,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         CM.lineNumbers(),
         CM.highlightActiveLine(),
         CM.drawSelection(),
+        CM.hoverHighlightField,
         CM.history(),
         CM.keymap.of([
           ...CM.defaultKeymap,
@@ -392,22 +513,29 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   }
 
   function getEditorText() {
-    return cmView ? cmView.state.doc.toString() : "";
+    if (cmView) return cmView.state.doc.toString();
+    if (plainEditor) return plainEditor.value;
+    return "";
   }
 
   function setEditorText(text) {
-    if (!cmView) return;
-    cmView.dispatch({
-      changes: { from: 0, to: cmView.state.doc.length, insert: text || "" }
-    });
+    if (cmView) {
+      cmView.dispatch({
+        changes: { from: 0, to: cmView.state.doc.length, insert: text || "" }
+      });
+      return;
+    }
+    if (plainEditor) plainEditor.value = text || "";
   }
 
   function toggleWrap() {
-    if (!cmView || !WrapCompartment) return;
     wrapOn = !wrapOn;
-    cmView.dispatch({
-      effects: WrapCompartment.reconfigure(wrapOn ? CM.lineWrapping : [])
-    });
+    if (cmView && WrapCompartment) {
+      cmView.dispatch({
+        effects: WrapCompartment.reconfigure(wrapOn ? CM.lineWrapping : [])
+      });
+    }
+    if (plainEditor) plainEditor.wrap = wrapOn ? "soft" : "off";
   }
 
   // ================= HL7 Parse/Serialize =================
@@ -1049,6 +1177,15 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     return idx;
   }
 
+  function segIndexForText(text, lineNo) {
+    var idx = -1;
+    var lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+    for (var i = 0; i < Math.min(lineNo, lines.length); i++) {
+      if (lines[i].trim()) idx++;
+    }
+    return idx;
+  }
+
   // ================= Actions & events =================
   function serializeAndRefresh() {
     var txt = serializeHL7(currentModel);
@@ -1364,7 +1501,9 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     stripeOn: true,
     stripeLight: "#eef1f6",
     stripeDark: "#1b2433",
-    pageGutter: 8
+    pageGutter: 8,
+    smoothScroll: true,
+    hintMode: "float"
   };
   var settings = loadSettings();
 
@@ -1413,6 +1552,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var inDark = document.getElementById("setStripeDark");
     var inGutter = document.getElementById("setPageGutter");
     var outGutter = document.getElementById("setPageGutterValue");
+    var inSmooth = document.getElementById("setSmoothScroll");
+    var inHint = document.getElementById("setHintMode");
     if (!overlay || !btnOpen) return;
 
     function syncInputs() {
@@ -1421,6 +1562,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       inDark.value = settings.stripeDark;
       if (inGutter) inGutter.value = String(settings.pageGutter);
       if (outGutter) outGutter.textContent = settings.pageGutter + "px";
+      if (inSmooth) inSmooth.checked = settings.smoothScroll !== false;
+      if (inHint) inHint.value = settings.hintMode || "float";
     }
     function open() {
       syncInputs();
@@ -1445,6 +1588,18 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       saveSettings();
       applyStripe();
     });
+    if (inSmooth) {
+      inSmooth.addEventListener("change", function () {
+        settings.smoothScroll = inSmooth.checked;
+        saveSettings();
+      });
+    }
+    if (inHint) {
+      inHint.addEventListener("change", function () {
+        settings.hintMode = inHint.value;
+        saveSettings();
+      });
+    }
     inLight.addEventListener("input", function () {
       settings.stripeLight = inLight.value;
       saveSettings();
@@ -1716,11 +1871,74 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
   })();
 
+  function setupSmoothScroll() {
+    var rightPanel = document.querySelector('.right');
+    if (!rightPanel) return;
+
+    var targetY = 0;
+    var currentY = 0;
+    var isAnimating = false;
+
+    rightPanel.addEventListener('wheel', function(e) {
+      // If setting is disabled, let browser handle normally
+      if (settings.smoothScroll === false) return;
+
+      // Ignore horizontal scrolling
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      
+      // Ignore trackpads (they have small deltaY and deltaMode 0)
+      if (e.deltaMode === 0 && Math.abs(e.deltaY) < 40) return;
+
+      e.preventDefault();
+      
+      if (!isAnimating) {
+        targetY = rightPanel.scrollTop;
+        currentY = rightPanel.scrollTop;
+      }
+
+      // Normalize scroll wheel modes and give it a slight inertia boost
+      var multiplier = e.deltaMode === 1 ? 40 : 1;
+      targetY += (e.deltaY * multiplier * 1.2);
+      
+      var maxScroll = rightPanel.scrollHeight - rightPanel.clientHeight;
+      targetY = Math.max(0, Math.min(targetY, maxScroll));
+
+      if (!isAnimating) {
+        isAnimating = true;
+        requestAnimationFrame(updateScroll);
+      }
+    }, { passive: false });
+
+    // Cancel animation if user grabs the scrollbar
+    rightPanel.addEventListener('mousedown', function() {
+      isAnimating = false;
+      targetY = rightPanel.scrollTop;
+    });
+
+    function updateScroll() {
+      if (!isAnimating) return;
+      
+      // Lerp for smooth inertia easing
+      currentY += (targetY - currentY) * 0.12;
+
+      // Snap and stop if very close
+      if (Math.abs(targetY - currentY) < 0.5) {
+        currentY = targetY;
+        rightPanel.scrollTop = targetY;
+        isAnimating = false;
+        return;
+      }
+
+      rightPanel.scrollTop = currentY;
+      requestAnimationFrame(updateScroll);
+    }
+  }
+
   async function bindUI() {
-    await ensureCodeMirror();
     setupGutter();
     setupSettings();
     setupHttpSender();
+    setupSmoothScroll();
     applyFontSize();
     applyStripe();
     applyLayoutSettings();
@@ -1734,24 +1952,52 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var selVersion = document.getElementById("selVersion");
     var selSample = document.getElementById("selSample");
 
-    // Populate sample dropdown
-    if (selSample && SAMPLE_TITLES) {
-      selSample.innerHTML = "";
-      Object.keys(SAMPLE_TITLES).forEach(function (key) {
-        var opt = document.createElement("option");
-        opt.value = key;
-        opt.textContent = SAMPLE_TITLES[key];
-        selSample.appendChild(opt);
-      });
-      if (selSample.options.length) selSample.selectedIndex = 0;
+    function populateSamples() {
+      if (selSample && SAMPLE_TITLES) {
+        selSample.innerHTML = "";
+        Object.keys(SAMPLE_TITLES).forEach(function (key) {
+          var opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = SAMPLE_TITLES[key];
+          selSample.appendChild(opt);
+        });
+        if (selSample.options.length) selSample.selectedIndex = 0;
+      }
     }
 
-    // Ctrl/Cmd+Enter to parse (also added in keymap)
-    cmView.dom.addEventListener("keydown", function (e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
+    function loadInitialMessage() {
+      // Populate sample dropdown
+      populateSamples();
+
+      // Load initial
+      var hash = window.location.hash.replace(/^#/, "");
+      if (hash && SAMPLES && SAMPLES[hash]) {
+        if (selSample) selSample.value = hash;
+        loadSelectedSample();
+      } else if (storedMsg && storedMsg.trim()) {
+        setEditorText(storedMsg);
         parseNow();
+      } else {
+        loadSelectedSample();
       }
+    }
+
+    ensureCodeMirror().then(function (view) {
+      cmView = view;
+      cmView.dom.addEventListener("mouseleave", function () {
+        hideEditorHint();
+      });
+      cmView.dom.addEventListener("keydown", function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          e.preventDefault();
+          parseNow();
+        }
+      });
+      loadInitialMessage();
+    }).catch(function(err) {
+      console.error("CodeMirror failed to load:", err);
+      createPlainEditor();
+      loadInitialMessage();
     });
 
     if (btnWrap) btnWrap.addEventListener("click", toggleWrap);
@@ -1788,5 +2034,12 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         '<p class="muted">Nothing to show yet. Paste an HL7 message to parse it automatically.</p>';
   }
 
-  bindUI();
+  bindUI().catch(function (err) {
+    console.error("UI bootstrap failed:", err);
+    var tree = document.getElementById("tree");
+    if (tree) {
+      tree.innerHTML =
+        '<p class="danger">The UI failed to start. Check the console for details.</p>';
+    }
+  });
 })();

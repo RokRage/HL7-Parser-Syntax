@@ -16,7 +16,7 @@
             <header>
                 <div class="brand">
                     <div class="logo" aria-hidden="true">
-                        <img src="assets/squizzle.svg" alt="" />
+                        <img src="assets/dude_sqizzle_shaded.svg" alt="" />
                     </div>
                     <h1>HL7 Message Explorer</h1>
                 </div>
@@ -61,7 +61,10 @@
             <div class="grid">
                <section class="pane">
                     <header>
-                        <h2>HL7 Input</h2>
+                        <h2 style="display:flex; align-items:center; gap:12px;">
+                            HL7 Input
+                            <div id="headerHintBox" class="header-hint" hidden></div>
+                        </h2>
                         <div class="font-controls">
                             <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
                             <span id="fontSizeLabel" class="font-size-label">13px</span>
@@ -70,6 +73,9 @@
                     </header>
                     <!-- CodeMirror will mount here -->
                     <div id="cmEditor" class="cm-host"></div>
+                    <footer style="padding: 6px 16px; border-top: 1px solid var(--border); min-height: 38px; display: flex; align-items: center;">
+                        <div id="footerHintBox" class="header-hint" style="background:transparent; padding:0; font-size:13px; max-width:none;" hidden></div>
+                    </footer>
                 </section>
 
                 <div class="gutter" id="gutter" role="separator" aria-orientation="vertical"
@@ -103,10 +109,6 @@
                 </section>
             </div>
         </div>
-
-        <div class="footer">
-            Made for quick HL7 spelunking. No data leaves your browser.
-        </div>
     </div>
 
     <div id="settingsOverlay" class="modal-overlay" hidden>
@@ -134,6 +136,19 @@
                     <span>Side gutter</span>
                     <input type="range" id="setPageGutter" min="0" max="48" step="1" />
                     <output id="setPageGutterValue">8px</output>
+                </label>
+                <div class="setting-group-title">Interactivity</div>
+                <label class="setting-row">
+                    <span>Show hover details</span>
+                    <select id="setHintMode">
+                        <option value="float">Floating tooltip</option>
+                        <option value="header">In header</option>
+                        <option value="footer">In footer</option>
+                    </select>
+                </label>
+                <label class="setting-row">
+                    <span>Smooth mouse scrolling</span>
+                    <input type="checkbox" id="setSmoothScroll" />
                 </label>
             </div>
             <footer class="modal-foot">

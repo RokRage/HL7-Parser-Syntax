@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/squizzle.svg" alt="HL7 Message Explorer logo" width="96" height="96">
+  <img src="assets/dude_sqizzle_shaded.svg" alt="HL7 Message Explorer logo" width="96" height="96">
 </p>
 
 <h1 align="center">HL7 Message Explorer</h1>
