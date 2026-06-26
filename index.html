@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HL7 Message Explorer</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400..600,0,0" />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+
+<body>
+    <div class="app">
+        <div class="container">
+            <header>
+                <div class="logo" aria-hidden="true">
+                    <span class="material-symbols-rounded">webhook</span>
+                </div>
+                <div>
+                    <h1>HL7 Message Explorer</h1>
+                </div>
+            </header>
+
+            <div class="toolbar">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
+                    Sample
+                    <select id="selSample"
+                        style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
+                        <!-- options will be populated by JS -->
+                    </select>
+                </label>
+
+                <button id="btnWrap" class="btn-glyph icon-only" title="Toggle word wrap"
+                    aria-label="Toggle word wrap">
+                    <span class="material-symbols-rounded" aria-hidden="true">wrap_text</span>
+                </button>
+                <button id="btnSendHttp" class="ghost btn-glyph icon-only" title="Send HTTP"
+                    aria-label="Send HTTP">
+                    <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                </button>
+                <button id="btnTheme" class="ghost btn-glyph icon-only" title="Toggle Dark Mode"
+                    aria-label="Toggle dark mode">
+                    <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
+                </button>
+
+                <label
+                    style="margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
+                    HL7 Version
+                    <select id="selVersion"
+                        style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
+                        <option value="2.3">2.3</option>
+                        <option value="2.4" selected>2.4</option>
+                    </select>
+                </label>
+
+                <button id="btnSettings" class="ghost icon-only" title="Settings" aria-label="Settings">
+                    <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+                </button>
+            </div>
+
+            <div class="grid">
+               <section class="pane">
+                    <header>
+                        <h2>HL7 Input</h2>
+                        <div class="font-controls">
+                            <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
+                            <span id="fontSizeLabel" class="font-size-label">13px</span>
+                            <button id="btnFontUp" class="icon-btn-sq" title="Increase font size">A+</button>
+                        </div>
+                    </header>
+                    <!-- CodeMirror will mount here -->
+                    <div id="cmEditor" class="cm-host"></div>
+                </section>
+
+                <div class="gutter" id="gutter" role="separator" aria-orientation="vertical"
+                    title="Drag to resize"></div>
+
+                <section class="pane">
+                    <header>
+                        <h2>Breakdown</h2>
+                        <div class="meta">
+                            <span class="badge" id="badgeSeg">0 segments</span>
+                            <span class="badge" id="badgeFld">0 fields</span>
+                        </div>
+                    </header>
+                    <div class="search-bar">
+                        <input id="fldSearch" type="search"
+                            placeholder="Search fields (segment, #, name, raw, values)…"
+                            style="width:100%;height:36px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--input-ink);border-radius:10px;padding:0 10px;font: 13px var(--sans);outline:none" />
+                        <div id="searchHint" class="path" style="margin-top:6px">
+                            Examples: “PID”, “Patient Name”, “GLUCOSE”, “mg/dL” — or a path to jump: “PID.5.1”, “PID:5”, “OBX.5.2”
+                        </div>
+                    </div>
+
+                    <div class="right">
+                        <div class="help">
+                            Tip: click any value to edit. Paths use
+                            <span class="mono">SEG.F[.C[.S]]</span> with repeat indices like
+                            <span class="mono">F(n)</span>. Use +/− on repeats.
+                        </div>
+                        <div class="tree" id="tree"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="footer">
+            Made for quick HL7 spelunking. No data leaves your browser.
+        </div>
+    </div>
+
+    <div id="settingsOverlay" class="modal-overlay" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Settings">
+            <header class="modal-head">
+                <h3>Settings</h3>
+                <button id="settingsClose" class="icon-btn-sq" title="Close" aria-label="Close">✕</button>
+            </header>
+            <div class="modal-body">
+                <div class="setting-group-title">Editor — alternating segment rows</div>
+                <label class="setting-row">
+                    <span>Enable alternating rows</span>
+                    <input type="checkbox" id="setStripeOn" />
+                </label>
+                <label class="setting-row">
+                    <span>Row colour — Light mode</span>
+                    <input type="color" id="setStripeLight" />
+                </label>
+                <label class="setting-row">
+                    <span>Row colour — Dark mode</span>
+                    <input type="color" id="setStripeDark" />
+                </label>
+            </div>
+            <footer class="modal-foot">
+                <button id="settingsReset" class="ghost">Reset defaults</button>
+                <button id="settingsDone" class="primary">Done</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="sendOverlay" class="modal-overlay" hidden>
+        <div class="modal send-modal" role="dialog" aria-modal="true" aria-label="Send HL7 message">
+            <header class="modal-head">
+                <h3>Send HL7</h3>
+                <button id="sendClose" class="icon-btn-sq" title="Close" aria-label="Close">x</button>
+            </header>
+            <div class="modal-body">
+                <label class="send-row">
+                    <span>Mirth HTTP URL</span>
+                    <input id="sendUrl" type="url" placeholder="http://127.0.0.1:8080/hl7" />
+                </label>
+                <label class="send-row">
+                    <span>Content-Type</span>
+                    <select id="sendContentType">
+                        <option value="text/plain" selected>text/plain</option>
+                        <option value="application/hl7-v2">application/hl7-v2</option>
+                        <option value="application/x-hl7">application/x-hl7</option>
+                    </select>
+                </label>
+                <label class="send-row">
+                    <span>Timeout</span>
+                    <input id="sendTimeout" type="number" min="1" max="120" step="1" value="15" />
+                </label>
+                <div id="sendStatus" class="send-status" role="status" aria-live="polite"></div>
+                <pre id="sendResponse" class="send-response" hidden></pre>
+            </div>
+            <footer class="modal-foot">
+                <button id="sendCancel" class="ghost">Cancel</button>
+                <button id="sendNow" class="primary">Send</button>
+            </footer>
+        </div>
+    </div>
+
+    <script src="assets/js/hl7-fields-2x.js"></script>
+    <script src="assets/js/hl7-datatypes-2x.js"></script>
+    <script src="assets/js/hl7-field-desc-2x.js"></script>
+    <script src="assets/js/samples.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+
+</html>
