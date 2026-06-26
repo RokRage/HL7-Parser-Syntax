@@ -1348,7 +1348,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   var SETTINGS_DEFAULTS = {
     stripeOn: true,
     stripeLight: "#eef1f6",
-    stripeDark: "#1b2433"
+    stripeDark: "#1b2433",
+    pageGutter: 8
   };
   var settings = loadSettings();
 
@@ -1381,6 +1382,11 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     );
   }
 
+  function applyLayoutSettings() {
+    var gutter = Math.max(0, Math.min(48, parseInt(settings.pageGutter, 10) || 0));
+    document.documentElement.style.setProperty("--page-gutter", gutter + "px");
+  }
+
   function setupSettings() {
     var overlay = document.getElementById("settingsOverlay");
     var btnOpen = document.getElementById("btnSettings");
@@ -1390,12 +1396,16 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var inOn = document.getElementById("setStripeOn");
     var inLight = document.getElementById("setStripeLight");
     var inDark = document.getElementById("setStripeDark");
+    var inGutter = document.getElementById("setPageGutter");
+    var outGutter = document.getElementById("setPageGutterValue");
     if (!overlay || !btnOpen) return;
 
     function syncInputs() {
       inOn.checked = settings.stripeOn !== false;
       inLight.value = settings.stripeLight;
       inDark.value = settings.stripeDark;
+      if (inGutter) inGutter.value = String(settings.pageGutter);
+      if (outGutter) outGutter.textContent = settings.pageGutter + "px";
     }
     function open() {
       syncInputs();
@@ -1430,11 +1440,20 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       saveSettings();
       applyStripe();
     });
+    if (inGutter) {
+      inGutter.addEventListener("input", function () {
+        settings.pageGutter = parseInt(inGutter.value, 10) || 0;
+        if (outGutter) outGutter.textContent = settings.pageGutter + "px";
+        saveSettings();
+        applyLayoutSettings();
+      });
+    }
     btnReset.addEventListener("click", function () {
       settings = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS));
       saveSettings();
       syncInputs();
       applyStripe();
+      applyLayoutSettings();
     });
   }
 
@@ -1577,16 +1596,33 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var GUTTER_W = 10;
     var MIN = 220; // min px per pane
     var dragging = false;
+    var splitRatio = 2 / 5;
+
+    function applySplitRatio() {
+      grid.style.gridTemplateColumns =
+        "minmax(" +
+        MIN +
+        "px, " +
+        splitRatio +
+        "fr) " +
+        GUTTER_W +
+        "px minmax(" +
+        MIN +
+        "px, " +
+        (1 - splitRatio) +
+        "fr)";
+    }
 
     function onMove(e) {
       if (!dragging) return;
       var clientX = e.touches ? e.touches[0].clientX : e.clientX;
       var rect = grid.getBoundingClientRect();
+      var available = Math.max(1, rect.width - GUTTER_W);
       var left = clientX - rect.left - GUTTER_W / 2;
-      var max = rect.width - GUTTER_W - MIN;
+      var max = available - MIN;
       left = Math.max(MIN, Math.min(left, max));
-      var right = rect.width - GUTTER_W - left;
-      grid.style.gridTemplateColumns = left + "px " + GUTTER_W + "px " + right + "px";
+      splitRatio = Math.max(0.15, Math.min(0.85, left / available));
+      applySplitRatio();
       if (e.cancelable) e.preventDefault();
     }
 
@@ -1617,7 +1653,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
     // Double-click resets to default ratio
     gutter.addEventListener("dblclick", function () {
-      grid.style.gridTemplateColumns = "2fr " + GUTTER_W + "px 3fr";
+      splitRatio = 2 / 5;
+      applySplitRatio();
     });
   }
 
@@ -1671,6 +1708,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     setupHttpSender();
     applyFontSize();
     applyStripe();
+    applyLayoutSettings();
 
     var btnFontUp = document.getElementById("btnFontUp");
     var btnFontDown = document.getElementById("btnFontDown");

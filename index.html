@@ -14,50 +14,49 @@
     <div class="app">
         <div class="container">
             <header>
-                <div class="logo" aria-hidden="true">
-                    <img src="assets/squizzle.svg" alt="" />
-                </div>
-                <div>
+                <div class="brand">
+                    <div class="logo" aria-hidden="true">
+                        <img src="assets/squizzle.svg" alt="" />
+                    </div>
                     <h1>HL7 Message Explorer</h1>
                 </div>
+                <div class="toolbar">
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
+                        Sample
+                        <select id="selSample"
+                            style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
+                            <!-- options will be populated by JS -->
+                        </select>
+                    </label>
+
+                    <button id="btnWrap" class="btn-glyph icon-only" title="Toggle word wrap"
+                        aria-label="Toggle word wrap">
+                        <span class="material-symbols-rounded" aria-hidden="true">wrap_text</span>
+                    </button>
+                    <button id="btnSendHttp" class="ghost btn-glyph icon-only" title="Send HTTP"
+                        aria-label="Send HTTP">
+                        <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                    </button>
+                    <button id="btnTheme" class="ghost btn-glyph icon-only" title="Toggle Dark Mode"
+                        aria-label="Toggle dark mode">
+                        <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
+                    </button>
+
+                    <label
+                        style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
+                        HL7 Version
+                        <select id="selVersion"
+                            style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
+                            <option value="2.3">2.3</option>
+                            <option value="2.4" selected>2.4</option>
+                        </select>
+                    </label>
+
+                    <button id="btnSettings" class="ghost icon-only" title="Settings" aria-label="Settings">
+                        <span class="material-symbols-rounded" aria-hidden="true">settings</span>
+                    </button>
+                </div>
             </header>
-
-            <div class="toolbar">
-                <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
-                    Sample
-                    <select id="selSample"
-                        style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
-                        <!-- options will be populated by JS -->
-                    </select>
-                </label>
-
-                <button id="btnWrap" class="btn-glyph icon-only" title="Toggle word wrap"
-                    aria-label="Toggle word wrap">
-                    <span class="material-symbols-rounded" aria-hidden="true">wrap_text</span>
-                </button>
-                <button id="btnSendHttp" class="ghost btn-glyph icon-only" title="Send HTTP"
-                    aria-label="Send HTTP">
-                    <span class="material-symbols-rounded" aria-hidden="true">send</span>
-                </button>
-                <button id="btnTheme" class="ghost btn-glyph icon-only" title="Toggle Dark Mode"
-                    aria-label="Toggle dark mode">
-                    <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
-                </button>
-
-                <label
-                    style="margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
-                    HL7 Version
-                    <select id="selVersion"
-                        style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
-                        <option value="2.3">2.3</option>
-                        <option value="2.4" selected>2.4</option>
-                    </select>
-                </label>
-
-                <button id="btnSettings" class="ghost icon-only" title="Settings" aria-label="Settings">
-                    <span class="material-symbols-rounded" aria-hidden="true">settings</span>
-                </button>
-            </div>
 
             <div class="grid">
                <section class="pane">
@@ -129,6 +128,12 @@
                 <label class="setting-row">
                     <span>Row colour — Dark mode</span>
                     <input type="color" id="setStripeDark" />
+                </label>
+                <div class="setting-group-title">Layout</div>
+                <label class="setting-row setting-range-row">
+                    <span>Side gutter</span>
+                    <input type="range" id="setPageGutter" min="0" max="48" step="1" />
+                    <output id="setPageGutterValue">8px</output>
                 </label>
             </div>
             <footer class="modal-foot">
