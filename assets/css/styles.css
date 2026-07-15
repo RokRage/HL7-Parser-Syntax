@@ -1236,6 +1236,20 @@ body.dark .badge {
   .toolbar label {
     gap: 6px !important;
   }
+  input,
+  select,
+  textarea,
+  .pane-select,
+  .sample-actions input,
+  .pill-input,
+  .comp-val,
+  .send-row input,
+  .send-row select,
+  .anon-wide-row select,
+  .anon-range-grid input,
+  .anon-list-grid textarea {
+    font-size: 16px !important;
+  }
   .mobile-pane-tabs {
     gap: 8px;
   }
@@ -1285,7 +1299,6 @@ body.dark .badge {
   }
   .sample-actions input {
     height: 36px;
-    font-size: 13px;
   }
   .sample-actions .icon-only,
   .pane-controls .sample-actions .icon-only {
