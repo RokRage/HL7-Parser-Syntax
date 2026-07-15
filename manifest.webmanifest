@@ -1,0 +1,19 @@
+{
+  "name": "HL7 Message Explorer",
+  "short_name": "HL7 Explorer",
+  "description": "Inspect, edit, anonymise, and test HL7 v2 messages.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "assets/dude_sqizzle_shaded.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

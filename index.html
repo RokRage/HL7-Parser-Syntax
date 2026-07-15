@@ -4,7 +4,14 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="HL7 Explorer" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>HL7 Message Explorer</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/dude_sqizzle_shaded.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/dude_sqizzle_shaded.svg" />
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400..600,0,0" />
     <link rel="stylesheet" href="assets/css/styles.css?v=breakdown-layout-1" />
@@ -21,22 +28,6 @@
                     <h1>HL7 Message Explorer</h1>
                 </div>
                 <div class="toolbar">
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)">
-                        Sample
-                        <select id="selSample"
-                            style="appearance:none;border:1px solid var(--border);background:var(--panel);height:42px;padding:0 12px;border-radius:12px;cursor:pointer;font-weight:600;">
-                            <!-- options will be populated by JS -->
-                        </select>
-                    </label>
-
-                    <button id="btnWrap" class="btn-glyph icon-only" title="Toggle word wrap"
-                        aria-label="Toggle word wrap">
-                        <span class="material-symbols-rounded" aria-hidden="true">wrap_text</span>
-                    </button>
-                    <button id="btnSendHttp" class="ghost btn-glyph icon-only" title="Send HTTP"
-                        aria-label="Send HTTP">
-                        <span class="material-symbols-rounded" aria-hidden="true">send</span>
-                    </button>
                     <button id="btnTheme" class="ghost btn-glyph icon-only" title="Toggle Dark Mode"
                         aria-label="Toggle dark mode">
                         <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
@@ -81,9 +72,53 @@
                                 aria-label="Collapse HL7 Input" aria-expanded="true">
                                 <span class="pane-toggle-glyph" aria-hidden="true">^</span>
                             </button>
-                            <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
-                            <span id="fontSizeLabel" class="font-size-label">13px</span>
-                            <button id="btnFontUp" class="icon-btn-sq" title="Increase font size">A+</button>
+                            <div class="sample-picker">
+                                <label class="pane-select-control">
+                                    <span>Sample</span>
+                                    <select id="selSample" class="pane-select">
+                                        <!-- options will be populated by JS -->
+                                    </select>
+                                </label>
+                                <div class="sample-actions">
+                                    <input id="customSampleTitle" type="text" placeholder="Sample name"
+                                        aria-label="Custom sample name" />
+                                    <button id="btnAddSample" class="ghost btn-glyph icon-only" title="Save current message as sample"
+                                        aria-label="Save current message as sample">
+                                        <span class="material-symbols-rounded" aria-hidden="true">save</span>
+                                    </button>
+                                    <button id="btnDeleteSample" class="ghost btn-glyph icon-only" title="Delete selected custom sample"
+                                        aria-label="Delete selected custom sample" disabled>
+                                        <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="input-action-group">
+                                <button id="btnWrap" class="btn-glyph icon-only" title="Toggle word wrap"
+                                    aria-label="Toggle word wrap">
+                                    <span class="material-symbols-rounded" aria-hidden="true">wrap_text</span>
+                                </button>
+                                <button id="btnSendHttp" class="ghost btn-glyph icon-only" title="Send HTTP"
+                                    aria-label="Send HTTP">
+                                    <span class="material-symbols-rounded" aria-hidden="true">send</span>
+                                </button>
+                                <button id="btnAnonymizePid" class="ghost btn-glyph icon-only" title="Anonymise PID"
+                                    aria-label="Anonymise PID">
+                                    <span class="material-symbols-rounded" aria-hidden="true">privacy_tip</span>
+                                </button>
+                                <button id="btnAnonSettings" class="ghost btn-glyph icon-only" title="Anonymisation settings"
+                                    aria-label="Anonymisation settings">
+                                    <span class="material-symbols-rounded" aria-hidden="true">tune</span>
+                                </button>
+                                <button id="btnRestorePid" class="ghost btn-glyph icon-only" title="Restore original PID data"
+                                    aria-label="Restore original PID data" disabled>
+                                    <span class="material-symbols-rounded" aria-hidden="true">undo</span>
+                                </button>
+                            </div>
+                            <div class="font-controls" aria-label="Font size controls">
+                                <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
+                                <span id="fontSizeLabel" class="font-size-label">13px</span>
+                                <button id="btnFontUp" class="icon-btn-sq" title="Increase font size">A+</button>
+                            </div>
                         </div>
                     </header>
                     <!-- CodeMirror will mount here -->
@@ -129,6 +164,75 @@
                     </div>
                 </section>
             </div>
+        </div>
+    </div>
+
+    <div id="anonSettingsOverlay" class="modal-overlay" hidden>
+        <div class="modal anon-modal" role="dialog" aria-modal="true" aria-label="Anonymisation settings">
+            <header class="modal-head">
+                <h3>Anonymisation</h3>
+                <button id="anonSettingsClose" class="icon-btn-sq" title="Close" aria-label="Close">✕</button>
+            </header>
+            <div class="modal-body">
+                <div class="setting-group-title">Mode</div>
+                <label class="setting-row anon-wide-row">
+                    <span>Name/address mode</span>
+                    <select id="anonSpecialMode">
+                        <option value="standard">Standard UK fake data</option>
+                        <option value="famous-silly">Famous names + silly addresses</option>
+                        <option value="star-wars">Star Wars names + addresses</option>
+                    </select>
+                </label>
+                <div class="setting-group-title">PID fields</div>
+                <div class="anon-field-grid">
+                    <label><input type="checkbox" data-anon-field="1" /> PID-1 Set ID</label>
+                    <label><input type="checkbox" data-anon-field="2" /> PID-2 Patient ID</label>
+                    <label><input type="checkbox" data-anon-field="3" /> PID-3 Identifier List</label>
+                    <label><input type="checkbox" data-anon-field="5" /> PID-5 Name</label>
+                    <label><input type="checkbox" data-anon-field="6" /> PID-6 Mother's Name</label>
+                    <label><input type="checkbox" data-anon-field="7" /> PID-7 DOB</label>
+                    <label><input type="checkbox" data-anon-field="8" /> PID-8 Sex</label>
+                    <label><input type="checkbox" data-anon-field="10" /> PID-10 Race</label>
+                    <label><input type="checkbox" data-anon-field="11" /> PID-11 Address</label>
+                    <label><input type="checkbox" data-anon-field="13" /> PID-13 Home Phone</label>
+                    <label><input type="checkbox" data-anon-field="14" /> PID-14 Work Phone</label>
+                    <label><input type="checkbox" data-anon-field="16" /> PID-16 Marital</label>
+                    <label><input type="checkbox" data-anon-field="17" /> PID-17 Religion</label>
+                    <label><input type="checkbox" data-anon-field="18" /> PID-18 Account</label>
+                    <label><input type="checkbox" data-anon-field="19" /> PID-19 NHS/SSN</label>
+                    <label><input type="checkbox" data-anon-field="22" /> PID-22 Ethnic Group</label>
+                    <label><input type="checkbox" data-anon-field="29" /> PID-29 Death Date</label>
+                    <label><input type="checkbox" data-anon-field="30" /> PID-30 Death Indicator</label>
+                </div>
+                <div class="setting-group-title">Ranges</div>
+                <div class="anon-range-grid">
+                    <label>DOB min year <input id="anonDobMin" type="number" min="1900" max="2100" /></label>
+                    <label>DOB max year <input id="anonDobMax" type="number" min="1900" max="2100" /></label>
+                    <label>Death min year <input id="anonDeathMin" type="number" min="1900" max="2100" /></label>
+                    <label>Death max year <input id="anonDeathMax" type="number" min="1900" max="2100" /></label>
+                    <label>Set ID min <input id="anonSetIdMin" type="number" min="1" max="999999" /></label>
+                    <label>Set ID max <input id="anonSetIdMax" type="number" min="1" max="999999" /></label>
+                    <label>PAS digits <input id="anonPasDigits" type="number" min="4" max="16" /></label>
+                    <label>MRN digits <input id="anonMrnDigits" type="number" min="4" max="16" /></label>
+                    <label>Account prefix <input id="anonAccountPrefix" type="text" /></label>
+                    <label>Account digits <input id="anonAccountDigits" type="number" min="4" max="16" /></label>
+                </div>
+                <div class="setting-group-title">Source lists</div>
+                <div class="anon-list-grid">
+                    <label>First names<textarea id="anonGivenNames"></textarea></label>
+                    <label>Surnames<textarea id="anonFamilyNames"></textarea></label>
+                    <label>Street names<textarea id="anonStreetNames"></textarea></label>
+                    <label>Address lines<textarea id="anonAddressLines"></textarea></label>
+                    <label>Towns / cities<textarea id="anonCities"></textarea></label>
+                    <label>Counties<textarea id="anonCounties"></textarea></label>
+                    <label>Postcode areas<textarea id="anonPostcodeAreas"></textarea></label>
+                    <label>Landline codes<textarea id="anonLandlineCodes"></textarea></label>
+                </div>
+            </div>
+            <footer class="modal-foot">
+                <button id="anonSettingsReset" class="ghost">Reset defaults</button>
+                <button id="anonSettingsSave" class="primary">Save</button>
+            </footer>
         </div>
     </div>
 
@@ -191,6 +295,14 @@
                     <span>Smooth mouse scrolling</span>
                     <input type="checkbox" id="setSmoothScroll" />
                 </label>
+                <div class="setting-group-title">Load / save</div>
+                <div class="settings-state-actions">
+                    <button id="settingsExportState" class="ghost" type="button">Save state</button>
+                    <button id="settingsImportState" class="ghost" type="button">Load state</button>
+                    <input id="settingsImportFile" type="file" accept="application/json,.json" hidden />
+                </div>
+                <div id="settingsLastSaved" class="settings-last-saved" hidden></div>
+                <div id="settingsStateStatus" class="settings-state-status" aria-live="polite"></div>
             </div>
             <footer class="modal-foot">
                 <button id="settingsReset" class="ghost">Reset defaults</button>

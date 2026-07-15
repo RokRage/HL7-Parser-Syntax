@@ -8,6 +8,10 @@
   var SAMPLE_TITLES = window.HL7_SAMPLE_TITLES || {};
   var STORED_MESSAGE_KEY = "hl7_message";
   var MOBILE_VIEW_KEY = "hl7_mobile_view";
+  var ORIGINAL_PID_MESSAGE_KEY = "hl7_original_pid_message";
+  var ANON_CONFIG_KEY = "hl7_anonymize_config";
+  var CUSTOM_SAMPLES_KEY = "hl7_custom_samples";
+  var APP_STATE_EXPORT_VERSION = 1;
 
   var currentVersion = "2.4";
   var currentModel = { delims: null, segments: [] };
@@ -55,6 +59,90 @@
     } catch (_) {}
   }
 
+  function loadOriginalPidMessage() {
+    try {
+      return localStorage.getItem(ORIGINAL_PID_MESSAGE_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function saveOriginalPidMessage(text) {
+    try {
+      if (text) localStorage.setItem(ORIGINAL_PID_MESSAGE_KEY, text);
+    } catch (_) {}
+    syncRestorePidButton();
+  }
+
+  function clearOriginalPidMessage() {
+    try {
+      localStorage.removeItem(ORIGINAL_PID_MESSAGE_KEY);
+    } catch (_) {}
+    syncRestorePidButton();
+  }
+
+  function syncRestorePidButton() {
+    var btn = document.getElementById("btnRestorePid");
+    if (!btn) return;
+    var hasOriginal = !!loadOriginalPidMessage();
+    btn.disabled = !hasOriginal;
+    btn.classList.toggle("is-disabled", !hasOriginal);
+  }
+
+  function normaliseCustomSamples(raw) {
+    var out = {};
+    if (!raw || typeof raw !== "object") return out;
+    Object.keys(raw).forEach(function (key) {
+      var item = raw[key];
+      if (!item || typeof item !== "object") return;
+      var title = String(item.title || "").trim();
+      var message = String(item.message || "");
+      if (!title || !message.trim()) return;
+      out[key] = {
+        title: title,
+        message: message,
+        version: String(item.version || "2.4"),
+        createdAt: item.createdAt || new Date().toISOString()
+      };
+    });
+    return out;
+  }
+
+  function loadCustomSamples() {
+    try {
+      return normaliseCustomSamples(JSON.parse(localStorage.getItem(CUSTOM_SAMPLES_KEY) || "{}"));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveCustomSamples(samples) {
+    try {
+      localStorage.setItem(CUSTOM_SAMPLES_KEY, JSON.stringify(normaliseCustomSamples(samples)));
+    } catch (_) {}
+  }
+
+  function customSampleKey() {
+    return "custom_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+  }
+
+  function getSampleMessage(key) {
+    if (SAMPLES && SAMPLES[key]) return SAMPLES[key];
+    var custom = loadCustomSamples();
+    return custom[key] ? custom[key].message : "";
+  }
+
+  function getSampleVersion(key, message) {
+    if (/_v23$/.test(key)) return "2.3";
+    if (/_v24$/.test(key)) return "2.4";
+    var custom = loadCustomSamples();
+    if (custom[key] && custom[key].version) return custom[key].version;
+    var msh = String(message || "").split(/\r\n?|\n/).find(function (line) {
+      return line.slice(0, 3) === "MSH";
+    });
+    return msh ? (msh.split("|")[11] || "2.4") : "2.4";
+  }
+
   var editorHintEl = null;
 
   function ensureEditorHint() {
@@ -89,7 +177,10 @@
     plainEditor.autocorrect = "off";
     plainEditor.wrap = wrapOn ? "soft" : "off";
 
-    plainEditor.addEventListener("input", scheduleParse);
+    plainEditor.addEventListener("input", function () {
+      saveStoredMessage(plainEditor.value);
+      scheduleParse();
+    });
     plainEditor.addEventListener("keydown", function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
@@ -503,7 +594,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
           { key: "Mod-Enter", run: () => (parseNow(), true) }
         ]),
         CM.EditorView.updateListener.of(function (update) {
-          if (update.docChanged) scheduleParse();
+          if (update.docChanged) {
+            saveStoredMessage(update.state.doc.toString());
+            scheduleParse();
+          }
           if (update.selectionSet) {
             var head = update.state.selection.main.head;
             var lineNo = update.state.doc.lineAt(head).number;
@@ -702,6 +796,553 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       }
     });
     return lines.join("\r\n");
+  }
+
+  // ================= PID anonymisation =================
+  var FAKE_GIVEN_NAMES = [
+    "Amelia", "Arthur", "Ava", "Benjamin", "Charlotte", "Daniel", "Eleanor", "Ethan",
+    "Florence", "Freddie", "Grace", "Harrison", "Iris", "Isaac", "Isla", "Jack",
+    "Jasmine", "Leo", "Lily", "Logan", "Maisie", "Mason", "Matilda", "Mia",
+    "Noah", "Olivia", "Oscar", "Phoebe", "Poppy", "Reuben", "Ruby", "Samuel",
+    "Sienna", "Sophia", "Theo", "Thomas", "Willow", "Zachary", "Aaron", "Alice",
+    "Brooke", "Caleb", "Daisy", "Elijah", "Eva", "Felix", "Georgia", "Harriet",
+    "Imogen", "Jacob", "Layla", "Lucas", "Maya", "Nathan", "Orla", "Rory",
+    "Scarlett", "Toby", "Violet", "William"
+  ];
+  var FAKE_FAMILY_NAMES = [
+    "Adams", "Allen", "Baker", "Bennett", "Brooks", "Brown", "Campbell", "Carter",
+    "Clark", "Cole", "Collins", "Cook", "Cooper", "Davies", "Dixon", "Edwards",
+    "Evans", "Fisher", "Foster", "Green", "Griffiths", "Hall", "Harris", "Hill",
+    "Hughes", "Jackson", "James", "Jenkins", "Johnson", "Jones", "Kelly", "King",
+    "Lewis", "Lloyd", "Marshall", "Martin", "Mason", "Miller", "Mitchell", "Moore",
+    "Morgan", "Morris", "Murphy", "Parker", "Patel", "Phillips", "Powell", "Price",
+    "Reed", "Roberts", "Robinson", "Scott", "Smith", "Taylor", "Thomas", "Thompson",
+    "Turner", "Walker", "Ward", "Williams"
+  ];
+  var FAKE_STREET_NAMES = [
+    "Abbey Road", "Ash Grove", "Baker Street", "Beech Avenue", "Birch Close",
+    "Bridge Street", "Brook Lane", "Cedar Avenue", "Church Road", "Clifton Drive",
+    "College Street", "Cooper Close", "Cromwell Road", "Derwent Way", "Elm Grove",
+    "Fairfield Road", "Field View", "Garden Street", "Glen Road", "Granby Street",
+    "Green Lane", "Grove Park", "Hamilton Road", "Hawthorn Close", "High Street",
+    "Hillcrest Road", "King Street", "Kingsway", "Lakeside Drive", "Laurel Close",
+    "Lime Tree Avenue", "Long Lane", "Manor Road", "Maple Drive", "Market Street",
+    "Meadow Lane", "Mill Road", "New Road", "North Street", "Oak Road",
+    "Orchard Way", "Park Avenue", "Poplar Close", "Queens Road", "River View",
+    "Rosemary Lane", "Rowan Court", "School Lane", "South Street", "Station Road",
+    "Sycamore Drive", "The Crescent", "Victoria Road", "Walnut Close", "Water Lane",
+    "Westfield Road", "Willow Drive", "Woodland Avenue", "York Road", "Yew Tree Close"
+  ];
+  var FAKE_ADDRESS_LINES = [
+    "Flat 1", "Flat 2", "Flat 3", "Flat 4", "Flat 5", "Apartment 6", "Apartment 7",
+    "Apartment 8", "Suite 9", "Unit 10", "The Old Rectory", "Rose Cottage",
+    "Ivy Cottage", "Meadow View", "Brook House", "Oak House", "Maple House",
+    "Cedar House", "Willow House", "Rowan House", "The Coach House", "Garden Flat",
+    "Top Floor", "Lower Ground", "First Floor", "Second Floor", "North Wing",
+    "South Wing", "East Wing", "West Wing", "Annexe A", "Annexe B", "Building C",
+    "Block D", "Block E", "Court 6", "House 7", "Lodge 8", "Mews 9", "Studio 10",
+    "Room 11", "Room 12", "Bay 13", "Plot 14", "Plot 15", "Unit 16", "Unit 17",
+    "Suite 18", "Flat 19", "Flat 20", "Apartment 21", "Apartment 22", "The Barn",
+    "The Granary", "The Lodge", "Mill House", "Park View", "Hill View", "Riverbank",
+    "Orchard House"
+  ];
+  var FAKE_CITIES = [
+    "Aberdeen", "Arundel", "Ashford", "Aylesbury", "Bangor", "Barnsley", "Bath",
+    "Bedford", "Belfast", "Birmingham", "Blackburn", "Blackpool", "Bolton",
+    "Bournemouth", "Bradford", "Brighton", "Bristol", "Cambridge", "Canterbury",
+    "Cardiff", "Carlisle", "Chelmsford", "Cheltenham", "Chester", "Colchester",
+    "Coventry", "Derby", "Doncaster", "Dundee", "Durham", "Edinburgh", "Exeter",
+    "Glasgow", "Gloucester", "Guildford", "Harrogate", "Ipswich", "Lancaster",
+    "Leeds", "Leicester", "Lincoln", "Liverpool", "London", "Luton", "Manchester",
+    "Newcastle", "Norwich", "Nottingham", "Oxford", "Peterborough", "Plymouth",
+    "Portsmouth", "Preston", "Reading", "Sheffield", "Southampton", "Swansea",
+    "Truro", "Winchester"
+  ];
+  var FAKE_COUNTIES = [
+    "Avon", "Bedfordshire", "Berkshire", "Buckinghamshire", "Cambridgeshire",
+    "Cheshire", "Cornwall", "Cumbria", "Derbyshire", "Devon", "Dorset", "Durham",
+    "East Sussex", "Essex", "Gloucestershire", "Greater London", "Greater Manchester",
+    "Hampshire", "Hertfordshire", "Kent", "Lancashire", "Leicestershire",
+    "Lincolnshire", "Merseyside", "Norfolk", "North Yorkshire", "Northamptonshire",
+    "Nottinghamshire", "Oxfordshire", "Shropshire", "Somerset", "South Yorkshire",
+    "Staffordshire", "Suffolk", "Surrey", "Tyne and Wear", "Warwickshire",
+    "West Midlands", "West Sussex", "West Yorkshire", "Wiltshire", "Worcestershire",
+    "Antrim", "Armagh", "Down", "Fermanagh", "Londonderry", "Tyrone", "Clwyd",
+    "Dyfed", "Gwent", "Gwynedd", "Powys", "Mid Glamorgan", "South Glamorgan",
+    "West Glamorgan", "Aberdeenshire", "Angus", "Fife", "Highland", "Lothian"
+  ];
+  var FAKE_POSTCODE_AREAS = [
+    "AB", "AL", "B", "BA", "BB", "BD", "BH", "BL", "BN", "BR", "BS", "BT", "CA",
+    "CB", "CF", "CH", "CM", "CO", "CR", "CT", "CV", "CW", "DA", "DD", "DE", "DG",
+    "DH", "DL", "DN", "DT", "DY", "E", "EC", "EH", "EN", "EX", "FK", "FY", "G",
+    "GL", "GU", "HA", "HD", "HG", "HP", "HR", "HU", "HX", "IG", "IP", "IV", "KT",
+    "L", "LA", "LE", "LL", "LN", "LS", "LU", "M"
+  ];
+  var FAKE_SEXES = ["F", "M", "U", "O"];
+  var FAKE_LANDLINE_CODES = [
+    "0113", "0114", "0115", "0116", "0117", "0118", "0121", "0131", "0141", "0151",
+    "0161", "0191", "020", "023", "024", "028", "029", "01382", "01452", "01522",
+    "01603", "01752", "01865", "01904", "01223", "01225", "01273", "01392", "01483",
+    "01582", "01604", "01733", "01872", "01908", "01962", "01978", "01244", "01274",
+    "01302", "01482", "01524", "01642", "01772", "01823", "01925", "01935", "01202",
+    "01245", "01332", "01432", "01536", "01633", "01707", "01895", "01926", "01952",
+    "01256", "01384", "01494", "01527"
+  ];
+  var FAMOUS_GIVEN_NAMES = [
+    "Adele", "Beyonce", "Billie", "Bruno", "Calvin", "Chris", "Daniel", "David",
+    "Dua", "Ed", "Elton", "Emma", "Florence", "Freddie", "George", "Harry",
+    "Hugh", "Idris", "Jude", "Kate", "Keira", "Lewis", "Lionel", "Margot",
+    "Mo", "Naomi", "Olivia", "Paul", "Ringo", "Sam", "Serena", "Stormzy",
+    "Taylor", "Tom", "Venus", "Zendaya"
+  ];
+  var FAMOUS_FAMILY_NAMES = [
+    "Adkins", "Beckham", "Bolt", "Bowie", "Capaldi", "Craig", "Dench", "Dylan",
+    "Eilish", "Fury", "Goulding", "Hamilton", "Holland", "John", "Kane", "Lipa",
+    "McCartney", "Mercury", "Murray", "Radcliffe", "Redmayne", "Rihanna", "Sheeran",
+    "Smith", "Styles", "Swift", "Watson", "Williams", "Winslet", "Wonder"
+  ];
+  var SILLY_STREET_NAMES = [
+    "Banana Boulevard", "Biscuit Crescent", "Bubblegum Lane", "Bumblebee Road",
+    "Custard Close", "Doodle Drive", "Dragonfly Street", "Flapjack Avenue",
+    "Gigglewick Gardens", "Gingerbread Grove", "Hobnob Hill", "Jellybean Road",
+    "Kipper Lane", "Lollipop Mews", "Marshmallow Street", "Marmalade Way",
+    "Noodle Close", "Pancake Parade", "Pickle Place", "Pudding Lane",
+    "Rainbow Road", "Scone Street", "Sherbet Avenue", "Snickerdoodle Drive",
+    "Sprocket Street", "Teacake Terrace", "Toffee Court", "Waffle Way",
+    "Wobbleton Road", "Yoyo Yard"
+  ];
+  var SILLY_ADDRESS_LINES = [
+    "Flat Over The Chip Shop", "The Wonky Attic", "Cupboard Under The Stairs",
+    "Top Floor Turret", "Blue Door Basement", "The Left-Hand Annexe",
+    "Garden Shed Suite", "Moonlight Mezzanine", "The Old Sweet Tin",
+    "Room Behind The Bookcase", "The Sunny Nook", "Studio By The Kettle",
+    "Loft Above The Larder", "The Cosy Cubby", "The Round Window Room",
+    "West Wing-ish", "The Secret Snug", "The Polka Dot Flat", "The Tiny Tower",
+    "The Grand Sock Drawer", "The Biscuit Annex", "The Purple Porch",
+    "The Smallest Lodge", "The Nearly New Nook", "The Teapot Flat",
+    "The Button Box", "The Clockwork Room", "The Zigzag Landing",
+    "The Jolly Alcove", "The Marmalade Loft"
+  ];
+  var SILLY_CITIES = [
+    "Bumbleford", "Crumpet-on-Sea", "Doodleham", "Giggleswick", "Jamchester",
+    "Muffinfield", "Noodlebury", "Pickleton", "Puddington", "Scone Regis",
+    "Snugglewick", "Teacup Wells", "Toffeeton", "Wobbleford", "Yumbridge"
+  ];
+  var SILLY_COUNTIES = [
+    "Custardshire", "Doodleshire", "Fizzyshire", "Jellyshire", "Mirthshire",
+    "Nibbleshire", "Puddingshire", "Sherbetshire", "Sillyshire", "Wobbletonshire"
+  ];
+  var STAR_WARS_GIVEN_NAMES = [
+    "Luke", "Leia", "Han", "Lando", "Rey", "Finn", "Poe", "Padme", "Anakin",
+    "Obi-Wan", "Qui-Gon", "Mace", "Ahsoka", "Sabine", "Ezra", "Hera", "Kanan",
+    "Cassian", "Jyn", "Bodhi", "Wedge", "Biggs", "Mon", "Nien", "Rose", "Maz",
+    "Din", "Grogu", "Bo-Katan", "Fennec", "Bail", "Beru", "Owen", "C-3PO", "R2-D2"
+  ];
+  var STAR_WARS_FAMILY_NAMES = [
+    "Skywalker", "Organa", "Solo", "Calrissian", "Kenobi", "Jinn", "Windu",
+    "Tano", "Wren", "Bridger", "Syndulla", "Andor", "Erso", "Rook", "Antilles",
+    "Darklighter", "Mothma", "Nunb", "Tico", "Kanata", "Djarin", "Kryze",
+    "Shand", "Bane", "Fett", "Lars", "Amidala", "Secura", "Koon", "Tarkin"
+  ];
+  var STAR_WARS_STREET_NAMES = [
+    "Tatooine Terrace", "Alderaan Avenue", "Coruscant Crescent", "Naboo Lane",
+    "Endor Road", "Hoth Hill", "Bespin Boulevard", "Dagobah Drive", "Yavin Yard",
+    "Jakku Junction", "Scarif Street", "Lothal Lane", "Mandalore Mews",
+    "Kamino Quay", "Kashyyyk Close", "Mustafar Way", "Dantooine Drive",
+    "Corellia Court", "Jedha Street", "Kessel Road", "Felucia Fields",
+    "Geonosis Gardens", "Ryloth Road", "Ahch-To Avenue", "Crait Crescent"
+  ];
+  var STAR_WARS_ADDRESS_LINES = [
+    "Moisture Farm Unit", "Jedi Archive Annex", "Rebel Hangar Bay", "Droid Workshop",
+    "Cantina Upstairs", "Docking Bay 94", "Cloud City Suite", "Ewok Village Hut",
+    "Echo Base Room", "The Senate Rotunda", "Podracer Garage", "Temple Training Room",
+    "Smuggler's Nook", "Resistance Bunker", "Mandalorian Forge", "Clone Barracks",
+    "Astromech Alcove", "Holocron Store", "Blue Milk Flat", "Hyperdrive Loft",
+    "Sarlacc View", "Bantha Barn", "Wookiee Treehouse", "Kyber Crystal Room"
+  ];
+  var STAR_WARS_CITIES = [
+    "Mos Eisley", "Mos Espa", "Theed", "Cloud City", "Anchorhead", "Niima Outpost",
+    "Sundari", "Tipoca City", "Coronet City", "Jedha City", "Lothal Capital",
+    "Kachirho", "Canto Bight", "Galactic City", "Pau City"
+  ];
+  var STAR_WARS_COUNTIES = [
+    "Outer Rim", "Mid Rim", "Core Worlds", "Western Reaches", "Anoat Sector",
+    "Arkanis Sector", "Lothal Sector", "Mandalore Sector", "Naboo System",
+    "Tatoo System"
+  ];
+
+  var ANON_FIELD_IDS = [
+    1, 2, 3, 5, 6, 7, 8, 10, 11, 13, 14, 16, 17, 18, 19, 22, 29, 30
+  ];
+
+  function defaultAnonConfig() {
+    var fields = {};
+    for (var i = 0; i < ANON_FIELD_IDS.length; i++) fields[String(ANON_FIELD_IDS[i])] = true;
+    return {
+      specialMode: "standard",
+      useFamousSilly: false,
+      fields: fields,
+      ranges: {
+        dobMinYear: 1928,
+        dobMaxYear: 2024,
+        deathMinYear: 2020,
+        deathMaxYear: 2026,
+        setIdMin: 1,
+        setIdMax: 9999,
+        pasDigits: 8,
+        mrnDigits: 8,
+        accountPrefix: "ACCT",
+        accountDigits: 9
+      },
+      lists: {
+        givenNames: FAKE_GIVEN_NAMES.slice(),
+        familyNames: FAKE_FAMILY_NAMES.slice(),
+        streetNames: FAKE_STREET_NAMES.slice(),
+        addressLines: FAKE_ADDRESS_LINES.slice(),
+        cities: FAKE_CITIES.slice(),
+        counties: FAKE_COUNTIES.slice(),
+        postcodeAreas: FAKE_POSTCODE_AREAS.slice(),
+        landlineCodes: FAKE_LANDLINE_CODES.slice()
+      }
+    };
+  }
+
+  function cleanList(values, fallback) {
+    var out = (values || [])
+      .map(function (v) { return String(v || "").trim(); })
+      .filter(Boolean);
+    return out.length ? out : fallback.slice();
+  }
+
+  function numberInRange(value, fallback, min, max) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) n = fallback;
+    return Math.max(min, Math.min(max, Math.round(n)));
+  }
+
+  function normalizeAnonConfig(config) {
+    var d = defaultAnonConfig();
+    var c = config || {};
+    var specialMode = c.specialMode || (c.useFamousSilly ? "famous-silly" : "standard");
+    if (["standard", "famous-silly", "star-wars"].indexOf(specialMode) < 0) {
+      specialMode = "standard";
+    }
+    var fields = {};
+    for (var i = 0; i < ANON_FIELD_IDS.length; i++) {
+      var id = String(ANON_FIELD_IDS[i]);
+      fields[id] = c.fields && Object.prototype.hasOwnProperty.call(c.fields, id)
+        ? !!c.fields[id]
+        : d.fields[id];
+    }
+    var r = c.ranges || {};
+    var ranges = {
+      dobMinYear: numberInRange(r.dobMinYear, d.ranges.dobMinYear, 1900, 2100),
+      dobMaxYear: numberInRange(r.dobMaxYear, d.ranges.dobMaxYear, 1900, 2100),
+      deathMinYear: numberInRange(r.deathMinYear, d.ranges.deathMinYear, 1900, 2100),
+      deathMaxYear: numberInRange(r.deathMaxYear, d.ranges.deathMaxYear, 1900, 2100),
+      setIdMin: numberInRange(r.setIdMin, d.ranges.setIdMin, 1, 999999),
+      setIdMax: numberInRange(r.setIdMax, d.ranges.setIdMax, 1, 999999),
+      pasDigits: numberInRange(r.pasDigits, d.ranges.pasDigits, 4, 16),
+      mrnDigits: numberInRange(r.mrnDigits, d.ranges.mrnDigits, 4, 16),
+      accountPrefix: String(r.accountPrefix || d.ranges.accountPrefix).slice(0, 10),
+      accountDigits: numberInRange(r.accountDigits, d.ranges.accountDigits, 4, 16)
+    };
+    if (ranges.dobMinYear > ranges.dobMaxYear) ranges.dobMaxYear = ranges.dobMinYear;
+    if (ranges.deathMinYear > ranges.deathMaxYear) ranges.deathMaxYear = ranges.deathMinYear;
+    if (ranges.setIdMin > ranges.setIdMax) ranges.setIdMax = ranges.setIdMin;
+    var lists = c.lists || {};
+    return {
+      specialMode: specialMode,
+      useFamousSilly: specialMode === "famous-silly",
+      fields: fields,
+      ranges: ranges,
+      lists: {
+        givenNames: cleanList(lists.givenNames, FAKE_GIVEN_NAMES),
+        familyNames: cleanList(lists.familyNames, FAKE_FAMILY_NAMES),
+        streetNames: cleanList(lists.streetNames, FAKE_STREET_NAMES),
+        addressLines: cleanList(lists.addressLines, FAKE_ADDRESS_LINES),
+        cities: cleanList(lists.cities, FAKE_CITIES),
+        counties: cleanList(lists.counties, FAKE_COUNTIES),
+        postcodeAreas: cleanList(lists.postcodeAreas, FAKE_POSTCODE_AREAS),
+        landlineCodes: cleanList(lists.landlineCodes, FAKE_LANDLINE_CODES)
+      }
+    };
+  }
+
+  function loadAnonConfig() {
+    try {
+      return normalizeAnonConfig(JSON.parse(localStorage.getItem(ANON_CONFIG_KEY) || "null"));
+    } catch (_) {
+      return normalizeAnonConfig(null);
+    }
+  }
+
+  function saveAnonConfig(config) {
+    var normalized = normalizeAnonConfig(config);
+    try {
+      localStorage.setItem(ANON_CONFIG_KEY, JSON.stringify(normalized));
+    } catch (_) {}
+    return normalized;
+  }
+
+  function resetAnonConfig() {
+    try {
+      localStorage.removeItem(ANON_CONFIG_KEY);
+    } catch (_) {}
+    return normalizeAnonConfig(null);
+  }
+
+  function randomItem(items) {
+    return items[Math.floor(Math.random() * items.length)];
+  }
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function padNumber(value, width) {
+    return String(value).padStart(width, "0");
+  }
+
+  function randomDigits(width, firstMin) {
+    var out = String(randomInt(firstMin == null ? 0 : firstMin, 9));
+    while (out.length < width) out += String(randomInt(0, 9));
+    return out;
+  }
+
+  function randomDateYmd(minYear, maxYear) {
+    var year = randomInt(minYear, maxYear);
+    var month = randomInt(1, 12);
+    var maxDay = new Date(year, month, 0).getDate();
+    return String(year) + padNumber(month, 2) + padNumber(randomInt(1, maxDay), 2);
+  }
+
+  function randomPostcode(config) {
+    var areas = (config && config.lists && config.lists.postcodeAreas) || FAKE_POSTCODE_AREAS;
+    return (
+      randomItem(areas) +
+      randomInt(1, 99) +
+      " " +
+      randomInt(1, 9) +
+      randomItem("ABCDEFGHJKPSTUWXYZ".split("")) +
+      randomItem("ABCDEFGHJKPSTUWXYZ".split(""))
+    );
+  }
+
+  function randomUkPhone(kind, config) {
+    if (kind === "mobile") return "077009" + randomDigits(5);
+    var codes = (config && config.lists && config.lists.landlineCodes) || FAKE_LANDLINE_CODES;
+    return randomItem(codes) + "960" + randomDigits(3);
+  }
+
+  function randomNhsNumber() {
+    var base = randomDigits(9, 4);
+    var total = 0;
+    for (var i = 0; i < 9; i++) total += Number(base.charAt(i)) * (10 - i);
+    var check = 11 - (total % 11);
+    if (check === 11) check = 0;
+    if (check === 10) return randomNhsNumber();
+    return base + String(check);
+  }
+
+  function randomPasId(config) {
+    var r = (config && config.ranges) || defaultAnonConfig().ranges;
+    return randomDigits(r.pasDigits, 1);
+  }
+
+  function randomMrn(config) {
+    var r = (config && config.ranges) || defaultAnonConfig().ranges;
+    return randomDigits(r.mrnDigits, 1);
+  }
+
+  function randomAccount(config) {
+    var r = (config && config.ranges) || defaultAnonConfig().ranges;
+    return r.accountPrefix + randomDigits(r.accountDigits, 1);
+  }
+
+  function specialAnonLists(config) {
+    if (!config || config.specialMode === "standard") return null;
+    if (config.specialMode === "star-wars") {
+      return {
+        givenNames: STAR_WARS_GIVEN_NAMES,
+        familyNames: STAR_WARS_FAMILY_NAMES,
+        streetNames: STAR_WARS_STREET_NAMES,
+        addressLines: STAR_WARS_ADDRESS_LINES,
+        cities: STAR_WARS_CITIES,
+        counties: STAR_WARS_COUNTIES,
+        postcodeAreas: ["SW"],
+        landlineCodes: config.lists.landlineCodes
+      };
+    }
+    return {
+      givenNames: FAMOUS_GIVEN_NAMES,
+      familyNames: FAMOUS_FAMILY_NAMES,
+      streetNames: SILLY_STREET_NAMES,
+      addressLines: SILLY_ADDRESS_LINES,
+      cities: SILLY_CITIES,
+      counties: SILLY_COUNTIES,
+      postcodeAreas: config.lists.postcodeAreas,
+      landlineCodes: config.lists.landlineCodes
+    };
+  }
+
+  function makeFakePatient(config) {
+    var c = config || loadAnonConfig();
+    var lists = specialAnonLists(c) || c.lists;
+    var ranges = c.ranges;
+    var given = randomItem(lists.givenNames);
+    return {
+      family: randomItem(lists.familyNames),
+      given: given,
+      middle: randomItem(lists.givenNames),
+      dob: randomDateYmd(ranges.dobMinYear, ranges.dobMaxYear),
+      sex: randomItem(FAKE_SEXES),
+      street: randomInt(1, 240) + " " + randomItem(lists.streetNames),
+      address2: randomItem(lists.addressLines),
+      city: randomItem(lists.cities),
+      county: randomItem(lists.counties),
+      postcode: randomPostcode(c),
+      mobile: randomUkPhone("mobile", c),
+      phone: randomUkPhone("landline", c),
+      pasId: randomPasId(c),
+      nhs: randomNhsNumber(),
+      mrn: randomMrn(c),
+      account: randomAccount(c)
+    };
+  }
+
+  function hasPidValue(value) {
+    return value != null && String(value).trim() !== "";
+  }
+
+  function pidFakeValue(fieldIndex, compIndex, subIndex, repeatIndex, patientIndex, patient, config) {
+    var c = config || loadAnonConfig();
+    var p = patient || makeFakePatient(c);
+    var specialLists = specialAnonLists(c);
+    var activeLists = specialLists
+      ? { givenNames: specialLists.givenNames, addressLines: specialLists.addressLines }
+      : { givenNames: c.lists.givenNames, addressLines: c.lists.addressLines };
+    var ranges = c.ranges;
+    var repSuffix = repeatIndex ? String(repeatIndex + 1) : "";
+    switch (fieldIndex) {
+      case 1:
+        return String(randomInt(ranges.setIdMin, ranges.setIdMax));
+      case 2:
+        if (compIndex === 1) return p.pasId + repSuffix;
+        if (compIndex === 4) return "PAS";
+        if (compIndex === 5) return "PI";
+        return "PAS" + String(compIndex) + randomDigits(3);
+      case 3:
+        if (compIndex === 1) return repeatIndex % 2 === 0 ? p.nhs : p.mrn + repSuffix;
+        if (compIndex === 4) return repeatIndex % 2 === 0 ? "NHS" : "PAS";
+        if (compIndex === 5) return repeatIndex % 2 === 0 ? "NH" : "MR";
+        return compIndex === 2 ? String(randomInt(1, 9)) : "ID" + randomDigits(4);
+      case 5:
+      case 6:
+        if (compIndex === 1) return p.family;
+        if (compIndex === 2) return p.given;
+        if (compIndex === 3) return p.middle;
+        if (compIndex === 7) return fieldIndex === 6 ? "M" : "L";
+        return compIndex === 4 ? "Mx" : compIndex === 5 ? "Dr" : randomItem(activeLists.givenNames);
+      case 7:
+        return randomDateYmd(ranges.dobMinYear, ranges.dobMaxYear);
+      case 8:
+        return p.sex;
+      case 10:
+        return compIndex === 1 ? "A" : compIndex === 2 ? "White British" : compIndex === 3 ? "UKETH" : "ETH" + randomDigits(3);
+      case 11:
+        if (compIndex === 1) return p.street;
+        if (compIndex === 2) return p.address2;
+        if (compIndex === 3) return p.city;
+        if (compIndex === 4) return p.county;
+        if (compIndex === 5) return p.postcode;
+        if (compIndex === 6) return c.specialMode === "star-wars" ? "GAL" : "GBR";
+        if (compIndex === 7) return "H";
+        return randomItem(activeLists.addressLines);
+      case 13:
+      case 14:
+        if (compIndex === 1) return fieldIndex === 13 ? p.mobile : p.phone;
+        if (compIndex === 2) return fieldIndex === 13 ? "PRN" : "WPN";
+        if (compIndex === 3) return "PH";
+        return randomDigits(6);
+      case 16:
+        return compIndex === 1 ? randomItem(["S", "M", "D", "W", "P"]) : compIndex === 2 ? "Unknown" : "HL70002";
+      case 17:
+        return compIndex === 1 ? randomItem(["ATH", "CHR", "MOS", "OTH", "UNK"]) : compIndex === 2 ? "Other" : compIndex === 3 ? "HL70006" : "REL" + randomDigits(2);
+      case 18:
+        return compIndex === 1 ? p.account : "";
+      case 19:
+        return randomDigits(9, 1);
+      case 22:
+        return compIndex === 1 ? randomItem(["A", "B", "C", "N", "U"]) : compIndex === 2 ? "Not stated" : "UKETH";
+      case 29:
+      case 30:
+        return fieldIndex === 29 ? randomDateYmd(ranges.deathMinYear, ranges.deathMaxYear) : randomItem(["N", "Y"]);
+      default:
+        return "ANON" + String(fieldIndex).padStart(2, "0") + randomDigits(6);
+    }
+  }
+
+  function anonymizePidField(field, patientIndex, patient, config) {
+    if (!field || !hasPidValue(field.raw)) return false;
+    if (!config.fields[String(field.index)]) return false;
+    var changed = false;
+    for (var r = 0; r < field.repeats.length; r++) {
+      var rep = field.repeats[r];
+      for (var c = 0; c < rep.components.length; c++) {
+        var comp = rep.components[c];
+        for (var s = 0; s < comp.subs.length; s++) {
+          if (!hasPidValue(comp.subs[s])) continue;
+          comp.subs[s] = pidFakeValue(field.index, c + 1, s + 1, r, patientIndex, patient, config);
+          changed = true;
+        }
+      }
+    }
+    if (changed) field.raw = fieldToRaw(field, currentModel.delims);
+    return changed;
+  }
+
+  function anonymizeCurrentPid() {
+    var originalText = getEditorText().trim();
+    currentModel = parseHL7(originalText);
+    if (!currentModel || !currentModel.segments.length) {
+      showCopied("No message loaded");
+      return;
+    }
+    var changedFields = 0;
+    var pidCount = 0;
+    var anonConfig = loadAnonConfig();
+    for (var i = 0; i < currentModel.segments.length; i++) {
+      var seg = currentModel.segments[i];
+      if (seg.name !== "PID") continue;
+      var patientIndex = pidCount++;
+      var patient = makeFakePatient(anonConfig);
+      for (var f = 0; f < seg.fields.length; f++) {
+        if (anonymizePidField(seg.fields[f], patientIndex, patient, anonConfig)) changedFields++;
+      }
+    }
+    if (!pidCount) {
+      showCopied("No PID segment found");
+      return;
+    }
+    if (!loadOriginalPidMessage()) saveOriginalPidMessage(originalText);
+    serializeAndRefresh();
+    showCopied(
+      "Anonymised " + changedFields + " PID field" + (changedFields === 1 ? "" : "s")
+    );
+  }
+
+  function restoreOriginalPidData() {
+    var originalText = loadOriginalPidMessage();
+    if (!originalText) {
+      showCopied("No original PID data saved");
+      return;
+    }
+    setEditorText(originalText);
+    currentModel = parseHL7(originalText.trim());
+    renderTree(currentModel);
+    clearOriginalPidMessage();
+    showCopied("Restored original PID data");
   }
 
   // ================= Right pane rendering =================
@@ -1527,13 +2168,150 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     if (cmView) cmView.requestMeasure();
   }
 
+  function reloadStoredFontSize() {
+    try {
+      var savedFs = parseInt(localStorage.getItem("hl7_font_size"), 10);
+      if (savedFs >= FONT_MIN && savedFs <= FONT_MAX) fontSize = savedFs;
+    } catch (_) {}
+    applyFontSize();
+  }
+
   function changeFontSize(delta) {
     fontSize = Math.max(FONT_MIN, Math.min(FONT_MAX, fontSize + delta));
     applyFontSize();
   }
 
+  // ================= Anonymisation settings =================
+  function listToTextarea(values) {
+    return (values || []).join("\n");
+  }
+
+  function textareaToList(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.split(/\r?\n|,/).map(function (v) { return v.trim(); }).filter(Boolean) : [];
+  }
+
+  function setAnonNumber(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.value = String(value);
+  }
+
+  function getAnonNumber(id, fallback) {
+    var el = document.getElementById(id);
+    return el ? Number(el.value || fallback) : fallback;
+  }
+
+  function populateAnonSettingsForm(config) {
+    var c = normalizeAnonConfig(config || loadAnonConfig());
+    var mode = document.getElementById("anonSpecialMode");
+    if (mode) mode.value = c.specialMode || "standard";
+    var boxes = document.querySelectorAll("[data-anon-field]");
+    for (var i = 0; i < boxes.length; i++) {
+      var id = boxes[i].getAttribute("data-anon-field");
+      boxes[i].checked = !!c.fields[id];
+    }
+    setAnonNumber("anonDobMin", c.ranges.dobMinYear);
+    setAnonNumber("anonDobMax", c.ranges.dobMaxYear);
+    setAnonNumber("anonDeathMin", c.ranges.deathMinYear);
+    setAnonNumber("anonDeathMax", c.ranges.deathMaxYear);
+    setAnonNumber("anonSetIdMin", c.ranges.setIdMin);
+    setAnonNumber("anonSetIdMax", c.ranges.setIdMax);
+    var simple = [
+      ["anonPasDigits", c.ranges.pasDigits],
+      ["anonMrnDigits", c.ranges.mrnDigits],
+      ["anonAccountPrefix", c.ranges.accountPrefix],
+      ["anonAccountDigits", c.ranges.accountDigits],
+      ["anonGivenNames", listToTextarea(c.lists.givenNames)],
+      ["anonFamilyNames", listToTextarea(c.lists.familyNames)],
+      ["anonStreetNames", listToTextarea(c.lists.streetNames)],
+      ["anonAddressLines", listToTextarea(c.lists.addressLines)],
+      ["anonCities", listToTextarea(c.lists.cities)],
+      ["anonCounties", listToTextarea(c.lists.counties)],
+      ["anonPostcodeAreas", listToTextarea(c.lists.postcodeAreas)],
+      ["anonLandlineCodes", listToTextarea(c.lists.landlineCodes)]
+    ];
+    simple.forEach(function (pair) {
+      var el = document.getElementById(pair[0]);
+      if (el) el.value = pair[1];
+    });
+  }
+
+  function readAnonSettingsForm() {
+    var fields = {};
+    var boxes = document.querySelectorAll("[data-anon-field]");
+    for (var i = 0; i < boxes.length; i++) {
+      fields[boxes[i].getAttribute("data-anon-field")] = boxes[i].checked;
+    }
+    return normalizeAnonConfig({
+      specialMode: (document.getElementById("anonSpecialMode") || {}).value || "standard",
+      fields: fields,
+      ranges: {
+        dobMinYear: getAnonNumber("anonDobMin", 1928),
+        dobMaxYear: getAnonNumber("anonDobMax", 2024),
+        deathMinYear: getAnonNumber("anonDeathMin", 2020),
+        deathMaxYear: getAnonNumber("anonDeathMax", 2026),
+        setIdMin: getAnonNumber("anonSetIdMin", 1),
+        setIdMax: getAnonNumber("anonSetIdMax", 9999),
+        pasDigits: getAnonNumber("anonPasDigits", 8),
+        mrnDigits: getAnonNumber("anonMrnDigits", 8),
+        accountPrefix: (document.getElementById("anonAccountPrefix") || {}).value,
+        accountDigits: getAnonNumber("anonAccountDigits", 9)
+      },
+      lists: {
+        givenNames: textareaToList("anonGivenNames"),
+        familyNames: textareaToList("anonFamilyNames"),
+        streetNames: textareaToList("anonStreetNames"),
+        addressLines: textareaToList("anonAddressLines"),
+        cities: textareaToList("anonCities"),
+        counties: textareaToList("anonCounties"),
+        postcodeAreas: textareaToList("anonPostcodeAreas"),
+        landlineCodes: textareaToList("anonLandlineCodes")
+      }
+    });
+  }
+
+  function bindAnonSettingsUI() {
+    var overlay = document.getElementById("anonSettingsOverlay");
+    var btnOpen = document.getElementById("btnAnonSettings");
+    var btnClose = document.getElementById("anonSettingsClose");
+    var btnSave = document.getElementById("anonSettingsSave");
+    var btnReset = document.getElementById("anonSettingsReset");
+    if (!overlay || !btnOpen) return;
+
+    function open() {
+      populateAnonSettingsForm(loadAnonConfig());
+      overlay.hidden = false;
+    }
+    function close() {
+      overlay.hidden = true;
+    }
+
+    btnOpen.addEventListener("click", open);
+    if (btnClose) btnClose.addEventListener("click", close);
+    if (btnSave) {
+      btnSave.addEventListener("click", function () {
+        saveAnonConfig(readAnonSettingsForm());
+        close();
+        showCopied("Anonymisation settings saved");
+      });
+    }
+    if (btnReset) {
+      btnReset.addEventListener("click", function () {
+        populateAnonSettingsForm(resetAnonConfig());
+        showCopied("Anonymisation settings reset");
+      });
+    }
+    overlay.addEventListener("mousedown", function (e) {
+      if (e.target === overlay) close();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !overlay.hidden) close();
+    });
+  }
+
   // ================= Settings =================
   var SETTINGS_KEY = "hl7_settings";
+  var LAST_STATE_SAVE_KEY = "hl7_state_last_saved";
   var SETTINGS_DEFAULTS = {
     stripeOn: true,
     stripeLight: "#eef1f6",
@@ -1566,6 +2344,103 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (_) {}
+  }
+
+  function readStorageJson(key, fallback) {
+    try {
+      return JSON.parse(localStorage.getItem(key) || "null") || fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function exportAppState() {
+    return {
+      app: "HL7 Message Explorer",
+      version: APP_STATE_EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      settings: loadSettings(),
+      anonymisation: loadAnonConfig(),
+      send: loadSendSettings(),
+      customSamples: loadCustomSamples(),
+      currentMessage: getEditorText() || loadStoredMessage(),
+      originalPidMessage: loadOriginalPidMessage(),
+      mobileView: loadMobileView(),
+      theme: localStorage.getItem("hl7_theme") || "light",
+      fontSize: localStorage.getItem("hl7_font_size") || ""
+    };
+  }
+
+  function downloadAppState() {
+    var state = exportAppState();
+    var blob = new Blob([JSON.stringify(state, null, 2)], {
+      type: "application/json"
+    });
+    var a = document.createElement("a");
+    var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = URL.createObjectURL(blob);
+    a.download = "hl7-viewer-state-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      document.body.removeChild(a);
+    }, 0);
+    try {
+      localStorage.setItem(LAST_STATE_SAVE_KEY, state.exportedAt);
+    } catch (_) {}
+  }
+
+  function loadLastStateSaveTime() {
+    try {
+      return localStorage.getItem(LAST_STATE_SAVE_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function formatSavedDateTime(value) {
+    if (!value) return "";
+    var d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function importAppState(state) {
+    if (!state || typeof state !== "object") throw new Error("Invalid state file.");
+    settings = normalizeSettingsObject(state.settings || readStorageJson(SETTINGS_KEY, SETTINGS_DEFAULTS));
+    saveSettings();
+    saveAnonConfig(state.anonymisation || state.anonymization || loadAnonConfig());
+    saveSendSettings(state.send || {});
+    saveCustomSamples(state.customSamples || {});
+    saveStoredMessage(state.currentMessage || "");
+    if (state.originalPidMessage) saveOriginalPidMessage(state.originalPidMessage);
+    else clearOriginalPidMessage();
+    saveMobileView(state.mobileView || "input");
+    try {
+      if (state.theme) localStorage.setItem("hl7_theme", state.theme === "dark" ? "dark" : "light");
+      if (state.fontSize) localStorage.setItem("hl7_font_size", String(state.fontSize));
+      if (state.exportedAt) localStorage.setItem(LAST_STATE_SAVE_KEY, state.exportedAt);
+    } catch (_) {}
+  }
+
+  function normalizeSettingsObject(source) {
+    var s = source && typeof source === "object" ? source : {};
+    var out = {};
+    for (var k in SETTINGS_DEFAULTS) {
+      out[k] = k in s ? s[k] : SETTINGS_DEFAULTS[k];
+    }
+    if ((out.uiStyle === "compact" || out.uiStyle === "spacious") && !("uiDensity" in s)) {
+      out.uiDensity = out.uiStyle;
+      out.uiStyle = "default";
+    }
+    return out;
   }
 
   // Applies the alternating-row colour for the current theme.
@@ -1619,7 +2494,25 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var inDensity = document.getElementById("setUiDensity");
     var inSmooth = document.getElementById("setSmoothScroll");
     var inHint = document.getElementById("setHintMode");
+    var btnExportState = document.getElementById("settingsExportState");
+    var btnImportState = document.getElementById("settingsImportState");
+    var importFile = document.getElementById("settingsImportFile");
+    var lastSaved = document.getElementById("settingsLastSaved");
+    var stateStatus = document.getElementById("settingsStateStatus");
     if (!overlay || !btnOpen) return;
+
+    function setStateStatus(text, cls) {
+      if (!stateStatus) return;
+      stateStatus.textContent = text || "";
+      stateStatus.className = "settings-state-status" + (cls ? " " + cls : "");
+    }
+
+    function syncLastSaved() {
+      if (!lastSaved) return;
+      var formatted = formatSavedDateTime(loadLastStateSaveTime());
+      lastSaved.hidden = !formatted;
+      lastSaved.textContent = formatted ? "Last saved: " + formatted : "";
+    }
 
     function syncInputs() {
       inOn.checked = settings.stripeOn !== false;
@@ -1631,9 +2524,11 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       if (inDensity) inDensity.value = settings.uiDensity || "default";
       if (inSmooth) inSmooth.checked = settings.smoothScroll !== false;
       if (inHint) inHint.value = settings.hintMode || "float";
+      syncLastSaved();
     }
     function open() {
       syncInputs();
+      setStateStatus("", "");
       overlay.hidden = false;
     }
     function close() {
@@ -1708,6 +2603,45 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       applyUiStyle();
       applyUiDensity();
     });
+    if (btnExportState) {
+      btnExportState.addEventListener("click", function () {
+        downloadAppState();
+        syncLastSaved();
+        setStateStatus("State saved to a JSON file.", "ok");
+      });
+    }
+    if (btnImportState && importFile) {
+      btnImportState.addEventListener("click", function () {
+        importFile.value = "";
+        importFile.click();
+      });
+      importFile.addEventListener("change", function () {
+        var file = importFile.files && importFile.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            importAppState(JSON.parse(String(reader.result || "{}")));
+            syncInputs();
+            applyStripe();
+            applyLayoutSettings();
+            applyUiStyle();
+            applyUiDensity();
+            reloadStoredFontSize();
+            setEditorText(loadStoredMessage());
+            parseNow();
+            window.dispatchEvent(new CustomEvent("hl7-theme-changed"));
+            window.dispatchEvent(new CustomEvent("hl7-custom-samples-changed"));
+            syncLastSaved();
+            setStateStatus("State loaded.", "ok");
+            showCopied("State loaded");
+          } catch (err) {
+            setStateStatus(err && err.message ? err.message : "Could not load state file.", "err");
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
   }
 
   // ================= HTTP sender =================
@@ -1941,6 +2875,15 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
     applyTheme(saved || "light");
 
+    window.addEventListener("hl7-theme-changed", function () {
+      var mode = "light";
+      try {
+        mode = localStorage.getItem("hl7_theme") || "light";
+      } catch (_) {}
+      applyTheme(mode);
+      applyStripe();
+    });
+
     if (btnTheme) {
       btnTheme.addEventListener("click", function () {
         var isDark = document.body.classList.toggle("dark");
@@ -2055,6 +2998,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     setupGutter();
     setupSettings();
     setupHttpSender();
+    bindAnonSettingsUI();
     setupSmoothScroll();
     setupMobilePaneTabs();
     applyFontSize();
@@ -2071,19 +3015,94 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var btnWrap = document.getElementById("btnWrap");
     var selVersion = document.getElementById("selVersion");
     var selSample = document.getElementById("selSample");
+    var customSampleTitle = document.getElementById("customSampleTitle");
+    var btnAddSample = document.getElementById("btnAddSample");
+    var btnDeleteSample = document.getElementById("btnDeleteSample");
 
-    function populateSamples() {
+    function syncSampleControls() {
+      if (!btnDeleteSample || !selSample) return;
+      btnDeleteSample.disabled = !/^custom_/.test(selSample.value || "");
+    }
+
+    function addSampleOption(group, key, title) {
+      var opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = title;
+      group.appendChild(opt);
+    }
+
+    function populateSamples(preferredKey) {
       if (selSample && SAMPLE_TITLES) {
+        var current = preferredKey || selSample.value;
         selSample.innerHTML = "";
+        var builtInGroup = document.createElement("optgroup");
+        builtInGroup.label = "Built-in samples";
         Object.keys(SAMPLE_TITLES).forEach(function (key) {
-          var opt = document.createElement("option");
-          opt.value = key;
-          opt.textContent = SAMPLE_TITLES[key];
-          selSample.appendChild(opt);
+          addSampleOption(builtInGroup, key, SAMPLE_TITLES[key]);
         });
-        if (selSample.options.length) selSample.selectedIndex = 0;
+        selSample.appendChild(builtInGroup);
+
+        var custom = loadCustomSamples();
+        var customKeys = Object.keys(custom).sort(function (a, b) {
+          return custom[a].title.localeCompare(custom[b].title);
+        });
+        if (customKeys.length) {
+          var customGroup = document.createElement("optgroup");
+          customGroup.label = "User samples";
+          customKeys.forEach(function (key) {
+            addSampleOption(customGroup, key, custom[key].title);
+          });
+          selSample.appendChild(customGroup);
+        }
+
+        if (current && getSampleMessage(current)) {
+          selSample.value = current;
+        } else if (selSample.options.length) {
+          selSample.selectedIndex = 0;
+        }
+        syncSampleControls();
       }
     }
+
+    function saveCurrentAsSample() {
+      var message = getEditorText();
+      if (!message || !message.trim()) {
+        showCopied("No message loaded");
+        return;
+      }
+      var title = customSampleTitle ? customSampleTitle.value.trim() : "";
+      if (!title) {
+        title = "Custom sample " + (Object.keys(loadCustomSamples()).length + 1);
+      }
+      var custom = loadCustomSamples();
+      var key = customSampleKey();
+      custom[key] = {
+        title: title,
+        message: message,
+        version: selVersion ? selVersion.value : currentVersion,
+        createdAt: new Date().toISOString()
+      };
+      saveCustomSamples(custom);
+      populateSamples(key);
+      if (customSampleTitle) customSampleTitle.value = "";
+      window.location.hash = key;
+      showCopied("Sample saved");
+    }
+
+    function deleteSelectedCustomSample() {
+      if (!selSample || !/^custom_/.test(selSample.value || "")) return;
+      var custom = loadCustomSamples();
+      if (!custom[selSample.value]) return;
+      delete custom[selSample.value];
+      saveCustomSamples(custom);
+      populateSamples();
+      loadSelectedSample();
+      showCopied("Sample deleted");
+    }
+
+    window.addEventListener("hl7-custom-samples-changed", function () {
+      populateSamples(selSample ? selSample.value : "");
+    });
 
     function loadInitialMessage() {
       var storedMsg = loadStoredMessage();
@@ -2093,7 +3112,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
       // Load initial
       var hash = window.location.hash.replace(/^#/, "");
-      if (hash && SAMPLES && SAMPLES[hash]) {
+      if (hash && getSampleMessage(hash)) {
         if (selSample) selSample.value = hash;
         loadSelectedSample();
       } else if (storedMsg && storedMsg.trim()) {
@@ -2123,23 +3142,43 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     });
 
     if (btnWrap) btnWrap.addEventListener("click", toggleWrap);
+    if (btnAddSample) btnAddSample.addEventListener("click", saveCurrentAsSample);
+    if (btnDeleteSample) btnDeleteSample.addEventListener("click", deleteSelectedCustomSample);
+    if (customSampleTitle) {
+      customSampleTitle.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveCurrentAsSample();
+        }
+      });
+    }
+
+    var btnAnonymizePid = document.getElementById("btnAnonymizePid");
+    if (btnAnonymizePid) btnAnonymizePid.addEventListener("click", anonymizeCurrentPid);
+    var btnRestorePid = document.getElementById("btnRestorePid");
+    if (btnRestorePid) btnRestorePid.addEventListener("click", restoreOriginalPidData);
+    syncRestorePidButton();
 
     var fldSearch = document.getElementById("fldSearch");
     if (fldSearch) fldSearch.addEventListener("input", applySearchFilter);
 
     function loadSelectedSample() {
+      clearOriginalPidMessage();
       var key = (selSample && selSample.value) || "a01_v24";
-      var msg = (SAMPLES && SAMPLES[key]) || "";
+      var msg = getSampleMessage(key);
       if (selVersion) {
-        if (/_v23$/.test(key)) selVersion.value = "2.3";
-        if (/_v24$/.test(key)) selVersion.value = "2.4";
+        selVersion.value = getSampleVersion(key, msg);
         currentVersion = selVersion.value;
       }
       setEditorText(msg);
       parseNow();
+      syncSampleControls();
     }
 
-    if (selSample) selSample.addEventListener("change", loadSelectedSample);
+    if (selSample) selSample.addEventListener("change", function () {
+      loadSelectedSample();
+      window.location.hash = selSample.value || "";
+    });
 
     if (selVersion) {
       currentVersion = selVersion.value;
@@ -2155,6 +3194,20 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       tree.innerHTML =
         '<p class="muted">Nothing to show yet. Paste an HL7 message to parse it automatically.</p>';
   }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    if (window.location.protocol !== "https:" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      return;
+    }
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function (err) {
+        console.warn("Service worker registration failed:", err);
+      });
+    });
+  }
+
+  registerServiceWorker();
 
   bindUI().catch(function (err) {
     console.error("UI bootstrap failed:", err);
