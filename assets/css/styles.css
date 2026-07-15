@@ -1337,6 +1337,129 @@ body.dark .badge {
   .cm-host {
     min-height: 48vh;
   }
+  .pane-breakdown > header {
+    min-height: 50px;
+    padding: 10px 12px;
+    align-items: center;
+  }
+  .pane-breakdown .meta {
+    gap: 6px;
+  }
+  .pane-breakdown .badge {
+    padding: 4px 8px;
+    font-size: 0.82rem;
+  }
+  .search-bar {
+    padding: 8px 10px;
+  }
+  .search-bar input {
+    height: 38px !important;
+  }
+  .search-bar .path {
+    margin-top: 4px !important;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+  .tree {
+    padding: 6px 6px 10px;
+  }
+  .segment-card {
+    margin: 6px 0;
+    border-radius: 10px;
+  }
+  .segment-card > div:first-child {
+    padding: 8px 10px !important;
+    min-height: 38px;
+  }
+  .segment-card tbody {
+    padding: 4px 6px 7px;
+  }
+  .segment-card tr.field-row {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    margin-top: 6px;
+    border-radius: 9px;
+  }
+  .segment-card tr.field-row > td {
+    min-width: 0;
+    padding: 5px 8px !important;
+  }
+  .segment-card tr.field-row > td:nth-child(1),
+  .segment-card tr.field-row > td:nth-child(2) {
+    border-bottom: 1px solid var(--border);
+  }
+  .segment-card tr.field-row > td:nth-child(3),
+  .segment-card tr.field-row > td:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+  .segment-card td::before {
+    margin-bottom: 2px;
+    font-size: 9px;
+    letter-spacing: 0.035em;
+  }
+  .segment-card tr.field-row > td:nth-child(1) {
+    font: 700 15px var(--mono);
+  }
+  .segment-card tr.field-row > td:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .field-name {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  .desc-ic {
+    font-size: 12px;
+  }
+  .editable-raw {
+    min-height: 34px;
+    font-size: 16px;
+  }
+  .field-copy-wrap {
+    margin-top: 4px;
+  }
+  .copy-field {
+    max-width: 100%;
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+  .rep-head,
+  .rep-nav {
+    min-height: 22px;
+    margin-bottom: 3px;
+  }
+  .rep-label {
+    padding: 1px 0;
+    font-size: 9px;
+  }
+  .rep-actions .icon-btn,
+  .rep-actions-nav .icon-btn,
+  .comp-ctrl .icon-btn {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+  }
+  .comp-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 4px 6px;
+    min-height: 28px;
+    padding: 2px 0;
+  }
+  .comp-row .copy-path {
+    width: 36px;
+    font-size: 10px;
+  }
+  .comp-name {
+    font-size: 10.5px;
+  }
+  .comp-val-wrap {
+    gap: 4px;
+  }
+  .comp-val {
+    height: 32px;
+    font-size: 16px;
+  }
 }
 
 /* UI colour/style experiments */
