@@ -1193,6 +1193,130 @@ body.dark .badge {
   }
 }
 
+@media (max-width: 600px) {
+  :root {
+    --page-gutter: 10px;
+    --radius: 12px;
+  }
+  .app {
+    height: 100dvh;
+    padding: 10px var(--page-gutter) 8px;
+    gap: 8px;
+  }
+  .container {
+    gap: 8px;
+  }
+  .app > .container > header {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px 12px;
+    padding: 0;
+  }
+  .brand {
+    display: contents;
+  }
+  .logo {
+    width: 64px;
+    height: 64px;
+  }
+  .logo img {
+    width: 52px;
+    height: 52px;
+  }
+  h1 {
+    font-size: clamp(1.25rem, 6vw, 1.75rem);
+    line-height: 1.08;
+  }
+  .toolbar {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .toolbar label {
+    gap: 6px !important;
+  }
+  .mobile-pane-tabs {
+    gap: 8px;
+  }
+  .mobile-pane-tab {
+    min-height: 48px;
+    border-radius: 10px;
+  }
+  .pane-input > header {
+    min-height: 0;
+    padding: 12px;
+    gap: 10px;
+  }
+  .pane-input > header h2 {
+    min-height: 0;
+    font-size: 1.05rem;
+  }
+  .pane-input .pane-controls {
+    gap: 8px;
+  }
+  .sample-picker {
+    flex: 1 1 100%;
+    max-width: none;
+    padding: 8px;
+    gap: 8px;
+  }
+  .sample-picker .pane-select-control {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .pane-select {
+    width: 100%;
+    height: 44px;
+    border-radius: 10px;
+  }
+  .sample-actions {
+    grid-template-columns: minmax(0, 1fr) 38px 38px;
+  }
+  .sample-actions input {
+    height: 38px;
+    font-size: 13px;
+  }
+  .sample-actions .icon-only,
+  .pane-controls .sample-actions .icon-only {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+  }
+  .input-action-group,
+  .font-controls {
+    padding: 8px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+  .input-action-group {
+    flex: 1 1 auto;
+  }
+  .font-controls {
+    margin-left: auto;
+  }
+  .pane-controls .btn-glyph.icon-only {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 10px;
+  }
+  .pane-controls .material-symbols-rounded {
+    font-size: 22px;
+  }
+  .icon-btn-sq {
+    width: 34px;
+    height: 34px;
+  }
+  .font-size-label {
+    min-width: 42px;
+  }
+  .cm-host {
+    min-height: 48vh;
+  }
+}
+
 /* UI colour/style experiments */
 body.ui-style-clinical {
   --bg: #f4faf8;
