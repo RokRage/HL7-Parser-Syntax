@@ -1462,7 +1462,7 @@ body.dark .badge {
   }
 }
 
-@media (orientation: landscape) and (max-height: 600px) and (max-width: 950px) {
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
   :root {
     --page-gutter: 8px;
     --radius: 10px;
@@ -1535,38 +1535,52 @@ body.dark .badge {
     gap: 6px;
   }
   .pane-input > header {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    justify-content: flex-start;
+    overflow: hidden;
   }
   .pane h2,
   .pane-input > header h2 {
+    flex: 0 0 auto;
     font-size: 0.98rem;
     min-height: 0;
+    width: auto;
+    margin-right: 2px;
   }
   .pane-input .pane-controls {
     align-items: center;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
     gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 1px;
   }
   .sample-picker {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr);
+    display: block;
     align-items: center;
-    flex: 0 1 460px;
-    max-width: 460px;
-    min-width: 240px;
+    flex: 0 1 320px;
+    max-width: 320px;
+    min-width: 210px;
     min-height: 0;
-    height: auto;
-    padding: 5px;
-    gap: 6px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: hidden;
   }
   .sample-picker .pane-select-control {
     display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-columns: 52px minmax(0, 1fr);
+    align-items: center;
     gap: 6px;
+    height: 34px;
   }
   .pane-select {
     height: 34px;
     border-radius: 9px;
+    width: 100%;
   }
   .sample-actions {
     display: none;
