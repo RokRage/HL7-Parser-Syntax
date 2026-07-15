@@ -1534,20 +1534,28 @@ body.dark .badge {
     padding: 7px 10px;
     gap: 6px;
   }
+  .pane-input > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .pane h2,
   .pane-input > header h2 {
     font-size: 0.98rem;
     min-height: 0;
   }
   .pane-input .pane-controls {
+    align-items: center;
     gap: 6px;
   }
   .sample-picker {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.75fr);
+    grid-template-columns: minmax(220px, 1fr);
     align-items: center;
-    flex: 1 1 100%;
-    max-width: none;
+    flex: 0 1 460px;
+    max-width: 460px;
+    min-width: 240px;
+    min-height: 0;
+    height: auto;
     padding: 5px;
     gap: 6px;
   }
@@ -1561,16 +1569,7 @@ body.dark .badge {
     border-radius: 9px;
   }
   .sample-actions {
-    grid-template-columns: minmax(0, 1fr) 32px 32px;
-  }
-  .sample-actions input {
-    height: 32px;
-  }
-  .sample-actions .icon-only,
-  .pane-controls .sample-actions .icon-only {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    display: none;
   }
   .input-action-group,
   .font-controls {
@@ -1578,6 +1577,13 @@ body.dark .badge {
     gap: 5px;
     min-height: 0;
     border-radius: 9px;
+  }
+  .input-action-group {
+    flex: 0 0 auto;
+  }
+  .font-controls {
+    flex: 0 0 auto;
+    margin-left: 0;
   }
   .pane-controls .btn-glyph.icon-only {
     width: 34px;
