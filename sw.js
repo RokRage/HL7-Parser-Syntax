@@ -1,4 +1,4 @@
-const CACHE_VERSION = "hl7-message-explorer-v1";
+const CACHE_VERSION = "hl7-message-explorer-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,8 @@ const APP_SHELL = [
   "./assets/js/hl7-field-desc-2x.js",
   "./assets/js/samples.js",
   "./assets/vendor/codemirror/codemirror.bundle.js",
+  "./assets/vendor/material-symbols/material-symbols-rounded.css",
+  "./assets/vendor/material-symbols/material-symbols-rounded-subset.woff2",
   "./assets/dude_sqizzle_shaded.svg"
 ];
 
