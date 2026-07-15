@@ -1462,6 +1462,167 @@ body.dark .badge {
   }
 }
 
+@media (orientation: landscape) and (max-height: 600px) and (max-width: 950px) {
+  :root {
+    --page-gutter: 8px;
+    --radius: 10px;
+  }
+  .app {
+    height: 100dvh;
+    padding: 6px var(--page-gutter);
+    gap: 6px;
+  }
+  .container {
+    gap: 6px;
+  }
+  .app > .container > header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+  }
+  .brand {
+    display: flex;
+    gap: 9px;
+    min-width: 0;
+  }
+  .logo {
+    width: 42px;
+    height: 42px;
+  }
+  .logo img {
+    width: 34px;
+    height: 34px;
+  }
+  h1 {
+    font-size: clamp(1rem, 3vw, 1.35rem);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .toolbar {
+    margin-left: auto;
+    gap: 6px;
+    flex: 0 1 auto;
+  }
+  .toolbar label {
+    gap: 5px !important;
+    font-size: 0.85rem;
+  }
+  .toolbar select {
+    height: 34px !important;
+    padding: 0 8px !important;
+    border-radius: 9px !important;
+  }
+  .toolbar .icon-only {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 10px;
+  }
+  .mobile-pane-tabs {
+    gap: 6px;
+  }
+  .mobile-pane-tab {
+    min-height: 34px;
+    padding: 7px 10px;
+    border-radius: 9px;
+  }
+  .pane > header,
+  .pane-input > header,
+  .pane-breakdown > header {
+    min-height: 0;
+    padding: 7px 10px;
+    gap: 6px;
+  }
+  .pane h2,
+  .pane-input > header h2 {
+    font-size: 0.98rem;
+    min-height: 0;
+  }
+  .pane-input .pane-controls {
+    gap: 6px;
+  }
+  .sample-picker {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.75fr);
+    align-items: center;
+    flex: 1 1 100%;
+    max-width: none;
+    padding: 5px;
+    gap: 6px;
+  }
+  .sample-picker .pane-select-control {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 6px;
+  }
+  .pane-select {
+    height: 34px;
+    border-radius: 9px;
+  }
+  .sample-actions {
+    grid-template-columns: minmax(0, 1fr) 32px 32px;
+  }
+  .sample-actions input {
+    height: 32px;
+  }
+  .sample-actions .icon-only,
+  .pane-controls .sample-actions .icon-only {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+  .input-action-group,
+  .font-controls {
+    padding: 6px;
+    gap: 5px;
+    min-height: 0;
+    border-radius: 9px;
+  }
+  .pane-controls .btn-glyph.icon-only {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 9px;
+  }
+  .icon-btn-sq {
+    width: 30px;
+    height: 30px;
+  }
+  .font-size-label {
+    min-width: 38px;
+  }
+  .cm-host {
+    min-height: 0;
+  }
+  .search-bar {
+    padding: 6px 8px;
+  }
+  .search-bar input {
+    height: 32px !important;
+  }
+  .search-bar .path,
+  .help {
+    display: none;
+  }
+  .tree {
+    padding: 5px 6px 8px;
+  }
+  .segment-card {
+    margin: 5px 0;
+  }
+  .segment-card > div:first-child {
+    padding: 7px 9px !important;
+    min-height: 34px;
+  }
+  .segment-card tbody {
+    padding: 3px 5px 6px;
+  }
+  .segment-card tr.field-row {
+    margin-top: 5px;
+  }
+}
+
 /* UI colour/style experiments */
 body.ui-style-clinical {
   --bg: #f4faf8;
