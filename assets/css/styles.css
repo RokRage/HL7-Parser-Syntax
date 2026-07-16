@@ -3185,3 +3185,12 @@ body.dark .cm-hl7-id  { color: #aab2c7; }
     font-size: 11px;
   }
 }
+
+/* Distinguish every Breakdown field from its surrounding segment at all sizes. */
+.segment-card tr.field-row {
+  background: #f6f8fc;
+}
+
+body.dark .segment-card tr.field-row {
+  background: rgba(160, 175, 200, 0.18);
+}
