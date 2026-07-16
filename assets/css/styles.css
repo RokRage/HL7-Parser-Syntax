@@ -1179,7 +1179,7 @@ body.dark .badge {
 .comp-row {
   position: relative;
   display: grid;
-  grid-template-columns: 44px minmax(88px, 0.7fr) minmax(110px, 1fr);
+  grid-template-columns: 44px minmax(88px, 0.7fr) minmax(110px, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-height: 34px;
@@ -1204,6 +1204,7 @@ body.dark .badge {
   gap: 6px;
   flex-wrap: wrap;
   min-width: 0;
+  width: 100%;
 }
 .comp-val {
   flex: 1 1 100px;
@@ -1236,20 +1237,11 @@ body.dark .badge {
   padding: 1px 4px;
 }
 .comp-ctrl {
-  position: absolute;
-  right: 0;
-  top: 50%;
   display: inline-flex;
   gap: 4px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: opacity 0.12s ease;
-}
-.comp-row:hover .comp-ctrl,
-.comp-row:focus-within .comp-ctrl {
+  justify-content: flex-end;
   opacity: 1;
-  pointer-events: auto;
+  transition: opacity 0.12s ease;
 }
 
 @media (max-width: 1200px) {
@@ -1279,11 +1271,8 @@ body.dark .badge {
     grid-column: 1 / -1;
   }
   .comp-ctrl {
-    position: static;
     grid-column: 1 / -1;
-    opacity: 1;
-    pointer-events: auto;
-    transform: none;
+    justify-content: flex-start;
   }
 }
 

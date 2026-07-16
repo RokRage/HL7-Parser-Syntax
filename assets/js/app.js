@@ -11,6 +11,8 @@
   var ORIGINAL_PID_MESSAGE_KEY = "hl7_original_pid_message";
   var ANON_CONFIG_KEY = "hl7_anonymize_config";
   var CUSTOM_SAMPLES_KEY = "hl7_custom_samples";
+  var SELECTED_SAMPLE_KEY = "hl7_selected_sample";
+  var SELECTED_VERSION_KEY = "hl7_selected_version";
   var APP_STATE_EXPORT_VERSION = 1;
 
   var currentVersion = "2.4";
@@ -56,6 +58,36 @@
   function saveMobileView(view) {
     try {
       localStorage.setItem(MOBILE_VIEW_KEY, view || "input");
+    } catch (_) {}
+  }
+
+  function loadSelectedSampleKey() {
+    try {
+      return localStorage.getItem(SELECTED_SAMPLE_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function saveSelectedSampleKey(key) {
+    try {
+      if (key) localStorage.setItem(SELECTED_SAMPLE_KEY, key);
+      else localStorage.removeItem(SELECTED_SAMPLE_KEY);
+    } catch (_) {}
+  }
+
+  function loadSelectedVersion() {
+    try {
+      return localStorage.getItem(SELECTED_VERSION_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function saveSelectedVersion(version) {
+    try {
+      if (version) localStorage.setItem(SELECTED_VERSION_KEY, version);
+      else localStorage.removeItem(SELECTED_VERSION_KEY);
     } catch (_) {}
   }
 
@@ -2032,27 +2064,31 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     tree.addEventListener("input", function (e) {
       var t = e.target;
       var role = t.getAttribute("data-role");
-      if (!role) return;
+      if (!role || role !== "raw") return;
 
-      if (role === "raw") {
-        var si = +t.getAttribute("data-seg-index");
-        var fi = +t.getAttribute("data-field-index");
-        var seg = currentModel.segments[si];
-        var field = seg.fields.find(function (f) {
-          return f.index === fi;
-        });
-        if (!field) return;
-        field.raw = t.value;
-        var updated = parseField(t.value, fi, currentModel.delims);
-        field.repeats = updated.repeats;
+      var si = +t.getAttribute("data-seg-index");
+      var fi = +t.getAttribute("data-field-index");
+      var seg = currentModel.segments[si];
+      var field = seg.fields.find(function (f) {
+        return f.index === fi;
+      });
+      if (!field) return;
+      field.raw = t.value;
+      var updated = parseField(t.value, fi, currentModel.delims);
+      field.repeats = updated.repeats;
 
-        if (seg.name === "MSH" && (fi === 1 || fi === 2)) {
-          serializeAndRefresh();
-          return;
-        }
-        setEditorText(serializeHL7(currentModel));
-        applySearchFilter();
-      } else if (role === "sub") {
+      if (seg.name === "MSH" && (fi === 1 || fi === 2)) {
+        serializeAndRefresh();
+        return;
+      }
+      setEditorText(serializeHL7(currentModel));
+      applySearchFilter();
+    });
+
+    tree.addEventListener("change", function (e) {
+      var t = e.target;
+      var role = t.getAttribute("data-role");
+      if (role === "sub") {
         var si2 = +t.getAttribute("data-seg-index");
         var fi2 = +t.getAttribute("data-field-index");
         var ri2 = +t.getAttribute("data-repeat-index");
@@ -2074,6 +2110,13 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         field2.raw = fieldToRaw(field2, currentModel.delims);
         setEditorText(serializeHL7(currentModel));
         applySearchFilter();
+      }
+    });
+
+    tree.addEventListener("keydown", function (e) {
+      var t = e.target;
+      if (e.key === "Enter" && t && t.getAttribute("data-role") === "sub") {
+        t.blur();
       }
     });
 
@@ -2367,6 +2410,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       currentMessage: getEditorText() || loadStoredMessage(),
       originalPidMessage: loadOriginalPidMessage(),
       mobileView: loadMobileView(),
+      selectedSample: loadSelectedSampleKey(),
+      selectedVersion: loadSelectedVersion(),
       theme: localStorage.getItem("hl7_theme") || "light",
       fontSize: localStorage.getItem("hl7_font_size") || ""
     };
@@ -2424,6 +2469,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     if (state.originalPidMessage) saveOriginalPidMessage(state.originalPidMessage);
     else clearOriginalPidMessage();
     saveMobileView(state.mobileView || "input");
+    saveSelectedSampleKey(state.selectedSample || "");
+    saveSelectedVersion(state.selectedVersion || "");
     try {
       if (state.theme) localStorage.setItem("hl7_theme", state.theme === "dark" ? "dark" : "light");
       if (state.fontSize) localStorage.setItem("hl7_font_size", String(state.fontSize));
@@ -3135,6 +3182,8 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       };
       saveCustomSamples(custom);
       populateSamples(key);
+      saveSelectedSampleKey(key);
+      if (selVersion) saveSelectedVersion(selVersion.value);
       if (customSampleTitle) customSampleTitle.value = "";
       window.location.hash = key;
       showCopied("Sample saved");
@@ -3146,27 +3195,40 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       if (!custom[selSample.value]) return;
       delete custom[selSample.value];
       saveCustomSamples(custom);
+      saveSelectedSampleKey("");
       populateSamples();
       loadSelectedSample();
       showCopied("Sample deleted");
     }
 
     window.addEventListener("hl7-custom-samples-changed", function () {
-      populateSamples(selSample ? selSample.value : "");
+      populateSamples(loadSelectedSampleKey() || (selSample ? selSample.value : ""));
+      if (selSample) saveSelectedSampleKey(selSample.value || "");
     });
 
     function loadInitialMessage() {
       var storedMsg = loadStoredMessage();
 
       // Populate sample dropdown
-      populateSamples();
+      populateSamples(loadSelectedSampleKey());
 
       // Load initial
       var hash = window.location.hash.replace(/^#/, "");
       if (hash && getSampleMessage(hash)) {
         if (selSample) selSample.value = hash;
+        saveSelectedSampleKey(hash);
         loadSelectedSample();
       } else if (storedMsg && storedMsg.trim()) {
+        var savedSample = loadSelectedSampleKey();
+        if (savedSample && selSample && getSampleMessage(savedSample)) {
+          selSample.value = savedSample;
+          syncSampleControls();
+        }
+        var savedVersion = loadSelectedVersion();
+        if (savedVersion && selVersion) {
+          selVersion.value = savedVersion;
+          currentVersion = selVersion.value;
+        }
         setEditorText(storedMsg);
         parseNow();
       } else {
@@ -3217,9 +3279,11 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       clearOriginalPidMessage();
       var key = (selSample && selSample.value) || "a01_v24";
       var msg = getSampleMessage(key);
+      saveSelectedSampleKey(key);
       if (selVersion) {
         selVersion.value = getSampleVersion(key, msg);
         currentVersion = selVersion.value;
+        saveSelectedVersion(currentVersion);
       }
       setEditorText(msg);
       parseNow();
@@ -3232,9 +3296,12 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     });
 
     if (selVersion) {
+      var savedVersion = loadSelectedVersion();
+      if (savedVersion) selVersion.value = savedVersion;
       currentVersion = selVersion.value;
       selVersion.addEventListener("change", function () {
         currentVersion = selVersion.value;
+        saveSelectedVersion(currentVersion);
         parseNow();
       });
     }
