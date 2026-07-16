@@ -988,6 +988,12 @@ textarea {
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
 }
+.pane-breakdown .search-bar {
+  background: #f3f6fb;
+}
+body.dark .pane-breakdown .search-bar {
+  background: rgba(122, 162, 255, 0.055);
+}
 .search-help-toggle {
   display: none;
 }
