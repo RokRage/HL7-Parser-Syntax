@@ -3894,6 +3894,14 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         applySearchFilter();
       });
     }
+    var btnSearchHelp = document.getElementById("btnSearchHelp");
+    var paneBreakdown = document.getElementById("pane-breakdown");
+    if (btnSearchHelp && paneBreakdown) {
+      btnSearchHelp.addEventListener("click", function () {
+        var expanded = paneBreakdown.classList.toggle("search-help-expanded");
+        btnSearchHelp.setAttribute("aria-expanded", expanded ? "true" : "false");
+      });
+    }
     var badgeUnsupported = document.getElementById("badgeUnsupported");
     if (badgeUnsupported) {
       function toggleUnsupportedFilter() {
