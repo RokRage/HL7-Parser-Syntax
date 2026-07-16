@@ -3267,125 +3267,274 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
   function setupHelpGuide() {
     var btn = document.getElementById("btnHelp");
-    var shell = document.querySelector(".workspace-shell");
-    var drawer = document.getElementById("helpDrawer");
-    var drawerBody = document.getElementById("helpDrawerBody");
-    var closeButton = document.getElementById("helpDrawerClose");
-    if (!btn || !shell || !drawer || !drawerBody || !closeButton) return;
+    if (!btn) return;
 
-    var activeTarget = null;
-    var compactHelp = window.matchMedia("(max-width: 1450px)");
-    var helpItems = [
-      { group: "Essentials", selector: "#btnTheme", title: "Theme", text: "Switch light/dark mode." },
-      { group: "Essentials", selector: "#selVersion", title: "HL7 Version", text: "Choose the schema used by Breakdown." },
-      { group: "Essentials", selector: "#btnSettings", title: "Settings", text: "Open display, layout, and saved-state settings." },
-      { group: "Essentials", selector: "#btnTabInput", title: "HL7 Input tab", text: "Show the message editor on narrow screens.", pane: "input" },
-      { group: "Essentials", selector: "#btnTabBreakdown", title: "Breakdown tab", text: "Show parsed field details on narrow screens.", pane: "breakdown" },
-      { group: "HL7 Input", selector: "#btnToggleInputPane", title: "Focus input", text: "Expand HL7 Input.", pane: "input" },
-      { group: "HL7 Input", selector: "#selSample", title: "Sample", text: "Load a built-in or saved message.", pane: "input" },
-      { group: "HL7 Input", selector: "#customSampleTitle", title: "Sample name", text: "Name a new sample, or leave blank to overwrite the selected user sample.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnAddSample", title: "Save sample", text: "Save the current message.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnDeleteSample", title: "Delete sample", text: "Delete the selected user sample.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnWrap", title: "Word wrap", text: "Toggle editor wrapping.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnSendHttp", title: "Send HTTP", text: "Send the current message to an endpoint.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnAnonymizePid", title: "Anonymise PID", text: "Replace PID data with configured fake data.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnAnonSettings", title: "Anonymisation settings", text: "Configure anonymisation behaviour.", pane: "input" },
-      { group: "HL7 Input", selector: "#btnRestorePid", title: "Restore PID", text: "Restore original PID data.", pane: "input" },
-      { group: "HL7 Input", selector: "#cmEditor", title: "HL7 Input", text: "Edit raw HL7. Selecting a field highlights it in Breakdown.", pane: "input" },
-      { group: "HL7 Input", selector: ".font-controls", title: "Editor font size", text: "Increase or decrease the HL7 editor font.", pane: "input" },
-      { group: "Breakdown", selector: "#btnToggleBreakdownPane", title: "Focus Breakdown", text: "Expand Breakdown.", pane: "breakdown" },
-      { group: "Breakdown", selector: "#badgeSeg", title: "Segments", text: "Visible segment count.", pane: "breakdown" },
-      { group: "Breakdown", selector: "#badgeFld", title: "Fields", text: "Visible field count.", pane: "breakdown" },
-      { group: "Breakdown", selector: "#badgeUnsupported", title: "Unsupported fields", text: "Filter fields unsupported by the selected schema.", pane: "breakdown" },
-      { group: "Breakdown", selector: "#fldSearch", title: "Search", text: "Filter by segment, field, value, or path.", pane: "breakdown" },
-      { group: "Breakdown", selector: "#tree", title: "Breakdown", text: "View parsed segments, edit values, and copy paths.", pane: "breakdown" }
+    var overlay = null;
+    var stepIndex = 0;
+    var renderQueued = false;
+    var pages = [
+      { title: "Essentials", items: [
+        { selector: "#btnTheme", title: "Theme", text: "Switch light/dark mode." },
+        { selector: "#selVersion", title: "HL7 Version", text: "Choose the schema used by Breakdown." },
+        { selector: "#btnSettings", title: "Settings", text: "Open display, layout, and saved-state settings." }
+      ] },
+      { title: "Mobile navigation", mobileOnly: true, items: [
+        { selector: "#btnTabInput", title: "HL7 Input tab", text: "Show the message editor.", pane: "input" },
+        { selector: "#btnTabBreakdown", title: "Breakdown tab", text: "Show parsed field details.", pane: "breakdown" }
+      ] },
+      { title: "Input samples", pane: "input", items: [
+        { selector: "#btnToggleInputPane", title: "Focus input", text: "Expand HL7 Input." },
+        { selector: "#selSample", title: "Sample", text: "Load a built-in or saved message." },
+        { selector: "#customSampleTitle", title: "Sample name", text: "Name a new sample or overwrite the selected user sample." },
+        { selector: "#btnAddSample", title: "Save sample", text: "Save the current message." },
+        { selector: "#btnDeleteSample", title: "Delete sample", text: "Delete the selected user sample." }
+      ] },
+      { title: "Input actions", pane: "input", items: [
+        { selector: "#btnWrap", title: "Word wrap", text: "Toggle editor wrapping." },
+        { selector: "#btnSendHttp", title: "Send HTTP", text: "Send the current message to an endpoint." },
+        { selector: "#btnAnonymizePid", title: "Anonymise PID", text: "Replace PID data with configured fake data." },
+        { selector: "#btnAnonSettings", title: "Anonymisation settings", text: "Configure anonymisation behaviour." },
+        { selector: "#btnRestorePid", title: "Restore PID", text: "Restore original PID data." }
+      ] },
+      { title: "Message editor", pane: "input", items: [
+        { selector: "#cmEditor", title: "HL7 Input", text: "Edit raw HL7. Selecting a field highlights it in Breakdown." },
+        { selector: ".font-controls", title: "Editor font size", text: "Increase or decrease the HL7 editor font." }
+      ] },
+      { title: "Breakdown header", pane: "breakdown", items: [
+        { selector: "#btnToggleBreakdownPane", title: "Focus Breakdown", text: "Expand Breakdown." },
+        { selector: "#badgeSeg", title: "Segments", text: "Visible segment count." },
+        { selector: "#badgeFld", title: "Fields", text: "Visible field count." },
+        { selector: "#badgeUnsupported", title: "Unsupported fields", text: "Filter fields unsupported by the selected schema." }
+      ] },
+      { title: "Breakdown tools", pane: "breakdown", items: [
+        { selector: "#fldSearch", title: "Search", text: "Filter by segment, field, value, or path." },
+        { selector: "#tree", title: "Breakdown", text: "View parsed segments, edit values, and copy paths." }
+      ] }
     ];
 
-    function clearTarget() {
-      if (!activeTarget) return;
-      activeTarget.classList.remove("help-context-target", "help-context-target-flash");
-      activeTarget = null;
+    function isVisible(el) {
+      if (!el || el.hidden) return false;
+      var style = window.getComputedStyle(el);
+      var rect = el.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 2 && rect.height > 2;
+    }
+
+    function getSteps() {
+      var availablePages = pages.filter(function (page) {
+        return !page.mobileOnly || window.innerWidth <= 1200;
+      });
+      if (window.innerWidth > 700) return availablePages;
+      var mobileSteps = [];
+      availablePages.forEach(function (page) {
+        page.items.forEach(function (item) {
+          mobileSteps.push({
+            title: page.title + " · " + item.title,
+            pane: item.pane || page.pane,
+            items: [item]
+          });
+        });
+      });
+      return mobileSteps;
+    }
+
+    function overlapArea(a, b) {
+      var width = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      var height = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      return width * height;
+    }
+
+    function asRect(left, top, width, height) {
+      return { left: left, top: top, right: left + width, bottom: top + height, width: width, height: height };
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function paddedRect(rect, padding) {
+      return asRect(rect.left - padding, rect.top - padding, rect.width + padding * 2, rect.height + padding * 2);
     }
 
     function showPane(pane) {
       if (!pane || window.innerWidth > 1200) return;
       var tab = document.getElementById(pane === "breakdown" ? "btnTabBreakdown" : "btnTabInput");
-      if (tab) tab.click();
+      if (tab && !tab.classList.contains("active")) tab.click();
     }
 
-    function locate(item) {
-      showPane(item.pane);
+    function placeCallout(card, target, blocked, placed, reserved) {
+      var margin = 12;
+      var gap = 18;
+      var width = card.offsetWidth;
+      var height = card.offsetHeight;
+      var cx = target.left + target.width / 2;
+      var cy = target.top + target.height / 2;
+      var candidates = [
+        { left: cx - width / 2, top: target.top - gap - height },
+        { left: cx - width / 2, top: target.bottom + gap },
+        { left: target.left - gap - width, top: cy - height / 2 },
+        { left: target.right + gap, top: cy - height / 2 },
+        { left: target.left, top: target.top - gap - height },
+        { left: target.right - width, top: target.top - gap - height },
+        { left: target.left, top: target.bottom + gap },
+        { left: target.right - width, top: target.bottom + gap }
+      ];
+      for (var scanTop = margin; scanTop <= window.innerHeight - height - margin; scanTop += 28) {
+        for (var scanLeft = margin; scanLeft <= window.innerWidth - width - margin; scanLeft += 36) {
+          candidates.push({ left: scanLeft, top: scanTop, free: true });
+        }
+      }
+      var best = null;
+      candidates.forEach(function (candidate, preference) {
+        var left = clamp(candidate.left, margin, window.innerWidth - width - margin);
+        var top = clamp(candidate.top, margin, window.innerHeight - height - margin);
+        var rect = asRect(left, top, width, height);
+        var score = candidate.free
+          ? 220 + Math.hypot((left + width / 2) - cx, (top + height / 2) - cy) * 0.3
+          : Math.abs(left - candidate.left) * 30 + Math.abs(top - candidate.top) * 30 + preference * 8;
+        blocked.forEach(function (blockedRect) { score += overlapArea(rect, blockedRect) * 80; });
+        placed.forEach(function (placedRect) { score += overlapArea(rect, placedRect) * 140; });
+        reserved.forEach(function (reservedRect) { score += overlapArea(rect, reservedRect) * 180; });
+        if (!candidate.free) score += Math.hypot((left + width / 2) - cx, (top + height / 2) - cy) * 0.08;
+        if (!best || score < best.score) best = { rect: rect, score: score };
+      });
+      card.style.left = best.rect.left + "px";
+      card.style.top = best.rect.top + "px";
+      card.style.visibility = "visible";
+      return best.rect;
+    }
+
+    function addLine(svg, cardRect, targetRect) {
+      var targetX = targetRect.left + targetRect.width / 2;
+      var targetY = targetRect.top + targetRect.height / 2;
+      var cardX = clamp(targetX, cardRect.left, cardRect.right);
+      var cardY = clamp(targetY, cardRect.top, cardRect.bottom);
+      if (cardX > cardRect.left && cardX < cardRect.right && cardY > cardRect.top && cardY < cardRect.bottom) {
+        var distances = [
+          { value: Math.abs(targetY - cardRect.top), x: targetX, y: cardRect.top },
+          { value: Math.abs(targetY - cardRect.bottom), x: targetX, y: cardRect.bottom },
+          { value: Math.abs(targetX - cardRect.left), x: cardRect.left, y: targetY },
+          { value: Math.abs(targetX - cardRect.right), x: cardRect.right, y: targetY }
+        ].sort(function (a, b) { return a.value - b.value; });
+        cardX = clamp(distances[0].x, cardRect.left, cardRect.right);
+        cardY = clamp(distances[0].y, cardRect.top, cardRect.bottom);
+      }
+      var targetEdgeX = clamp(cardX, targetRect.left, targetRect.right);
+      var targetEdgeY = clamp(cardY, targetRect.top, targetRect.bottom);
+      var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("class", "help-tour-line");
+      line.setAttribute("x1", String(cardX));
+      line.setAttribute("y1", String(cardY));
+      line.setAttribute("x2", String(targetEdgeX));
+      line.setAttribute("y2", String(targetEdgeY));
+      line.setAttribute("marker-end", "url(#helpTourArrow)");
+      svg.appendChild(line);
+    }
+
+    function renderStep() {
+      if (!overlay) return;
+      var steps = getSteps();
+      stepIndex = clamp(stepIndex, 0, steps.length - 1);
+      var step = steps[stepIndex];
+      showPane(step.pane);
+      overlay.querySelectorAll(".help-tour-ring, .help-tour-callout").forEach(function (node) { node.remove(); });
+      var svg = overlay.querySelector(".help-tour-lines");
+      svg.querySelectorAll(".help-tour-line").forEach(function (node) { node.remove(); });
+      overlay.querySelector(".help-tour-status").textContent = step.title + "  " + (stepIndex + 1) + "/" + steps.length;
+      var entries = step.items.map(function (item) {
+        var el = document.querySelector(item.selector);
+        return isVisible(el) ? { item: item, el: el, rect: el.getBoundingClientRect() } : null;
+      }).filter(Boolean);
+      var blocked = entries.map(function (entry) { return paddedRect(entry.rect, 9); });
+      var navRect = overlay.querySelector(".help-tour-nav").getBoundingClientRect();
+      var closeRect = overlay.querySelector(".help-tour-close").getBoundingClientRect();
+      var reserved = [paddedRect(navRect, 8), paddedRect(closeRect, 8)];
+      var placed = [];
+
+      entries.forEach(function (entry) {
+        var ring = document.createElement("div");
+        ring.className = "help-tour-ring";
+        ring.style.left = Math.max(2, entry.rect.left - 5) + "px";
+        ring.style.top = Math.max(2, entry.rect.top - 5) + "px";
+        ring.style.width = entry.rect.width + 10 + "px";
+        ring.style.height = entry.rect.height + 10 + "px";
+        overlay.appendChild(ring);
+
+        var card = document.createElement("div");
+        card.className = "help-tour-callout";
+        card.style.visibility = "hidden";
+        card.innerHTML = "<strong>" + escText(entry.item.title) + "</strong><span>" + escText(entry.item.text) + "</span>";
+        overlay.appendChild(card);
+        var cardRect = placeCallout(card, entry.rect, blocked, placed, reserved);
+        placed.push(paddedRect(cardRect, 6));
+        addLine(svg, cardRect, entry.rect);
+      });
+    }
+
+    function activateStep(nextIndex) {
+      var steps = getSteps();
+      stepIndex = (nextIndex + steps.length) % steps.length;
+      showPane(steps[stepIndex].pane);
+      requestAnimationFrame(renderStep);
+    }
+
+    function scheduleRender() {
+      if (!overlay || renderQueued) return;
+      renderQueued = true;
       requestAnimationFrame(function () {
-        var target = document.querySelector(item.selector);
-        if (!target || target.hidden) return;
-        clearTarget();
-        activeTarget = target;
-        activeTarget.classList.add("help-context-target", "help-context-target-flash");
-        activeTarget.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        renderQueued = false;
+        renderStep();
       });
     }
 
     function close() {
-      if (drawer.hidden) return;
-      drawer.hidden = true;
-      shell.classList.remove("help-open");
-      clearTarget();
+      if (!overlay) return;
+      overlay.remove();
+      overlay = null;
       btn.setAttribute("aria-pressed", "false");
       btn.classList.remove("active");
       btn.setAttribute("title", "Open help");
       btn.setAttribute("aria-label", "Open help");
+      window.removeEventListener("resize", scheduleRender);
+      window.removeEventListener("scroll", scheduleRender, true);
+      document.removeEventListener("click", scheduleRender, true);
       document.removeEventListener("keydown", onKeydown);
     }
 
     function onKeydown(e) {
       if (e.key === "Escape") close();
+      if (e.key === "ArrowRight") activateStep(stepIndex + 1);
+      if (e.key === "ArrowLeft") activateStep(stepIndex - 1);
     }
 
     function open() {
-      if (!drawer.hidden) return;
-      drawer.hidden = false;
-      shell.classList.add("help-open");
+      if (overlay) return;
+      overlay = document.createElement("div");
+      overlay.className = "help-tour-overlay";
+      overlay.innerHTML =
+        '<svg class="help-tour-lines" aria-hidden="true"><defs><marker id="helpTourArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"></path></marker></defs></svg>' +
+        '<button type="button" class="help-tour-close ghost" aria-label="Close help">×</button>' +
+        '<div class="help-tour-nav" role="group" aria-label="Help pages">' +
+          '<button type="button" class="help-tour-prev ghost" aria-label="Previous help page">←</button>' +
+          '<span class="help-tour-status" aria-live="polite"></span>' +
+          '<button type="button" class="help-tour-next ghost" aria-label="Next help page">→</button>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.querySelector(".help-tour-close").addEventListener("click", close);
+      overlay.querySelector(".help-tour-prev").addEventListener("click", function () { activateStep(stepIndex - 1); });
+      overlay.querySelector(".help-tour-next").addEventListener("click", function () { activateStep(stepIndex + 1); });
       btn.setAttribute("aria-pressed", "true");
       btn.classList.add("active");
       btn.setAttribute("title", "Close help");
       btn.setAttribute("aria-label", "Close help");
+      window.addEventListener("resize", scheduleRender);
+      window.addEventListener("scroll", scheduleRender, true);
+      document.addEventListener("click", scheduleRender, true);
       document.addEventListener("keydown", onKeydown);
-      var drawerIntro = drawer.querySelector(".help-drawer-head p");
-      if (drawerIntro) {
-        drawerIntro.textContent = compactHelp.matches
-          ? "Select a control to return to the app and locate it."
-          : "Select a control to locate it. The app remains usable.";
-      }
-      if (compactHelp.matches) closeButton.focus({ preventScroll: true });
+      renderStep();
     }
 
-    ["Essentials", "HL7 Input", "Breakdown"].forEach(function (group, groupIndex) {
-      var section = document.createElement("details");
-      section.className = "help-section";
-      section.open = groupIndex === 0;
-      section.innerHTML = "<summary>" + escText(group) + "</summary>";
-      var list = document.createElement("div");
-      list.className = "help-section-list";
-      helpItems.filter(function (item) { return item.group === group; }).forEach(function (item) {
-        var row = document.createElement("button");
-        row.type = "button";
-        row.className = "help-context-item";
-        row.innerHTML =
-          "<span><strong>" + escText(item.title) + "</strong><small>" + escText(item.text) + "</small></span>" +
-          '<span class="material-symbols-rounded" aria-hidden="true">my_location</span>';
-        row.addEventListener("click", function () {
-          if (compactHelp.matches) close();
-          locate(item);
-        });
-        list.appendChild(row);
-      });
-      section.appendChild(list);
-      drawerBody.appendChild(section);
-    });
-
-    closeButton.addEventListener("click", close);
     btn.addEventListener("click", function () {
-      if (!drawer.hidden) close();
+      if (overlay) close();
       else open();
     });
   }
