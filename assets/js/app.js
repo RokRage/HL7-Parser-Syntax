@@ -227,7 +227,13 @@
       var segIdx = segIndexForText(plainEditor.value, lineNo);
       highlightSegment(segIdx);
       var info = fieldIndexAtPlainPos(plainEditor.value, lineNo, head);
-      highlightBreakdownField(segIdx, info ? info.field : null);
+      highlightBreakdownField(
+        segIdx,
+        info ? info.field : null,
+        info ? info.repeat : null,
+        info ? info.comp : null,
+        info ? info.sub : null
+      );
     }
 
     plainEditor.addEventListener("click", syncPlainSelection);
@@ -255,9 +261,15 @@
     for (var i = 0; i < active.length; i++) {
       active[i].classList.remove("editor-active-field");
     }
+    var activeSubfields = tree.querySelectorAll(
+      ".comp-row.editor-active-subfield, .sub-chip.editor-active-subcomponent"
+    );
+    for (var j = 0; j < activeSubfields.length; j++) {
+      activeSubfields[j].classList.remove("editor-active-subfield", "editor-active-subcomponent");
+    }
   }
 
-  function highlightBreakdownField(segIdx, fieldIndex) {
+  function highlightBreakdownField(segIdx, fieldIndex, repeatIndex, compIndex, subIndex) {
     clearBreakdownFieldHighlight();
     if (segIdx == null || fieldIndex == null || segIdx < 0) return;
     var tree = document.getElementById("tree");
@@ -267,8 +279,43 @@
     );
     if (!row) return;
     row.classList.add("editor-active-field");
-    if (row.offsetParent !== null) {
-      row.scrollIntoView({ block: "center", behavior: "smooth" });
+
+    var subfieldTarget = null;
+    if (repeatIndex != null && compIndex != null) {
+      var repeatZero = Math.max(0, repeatIndex - 1);
+      var compZero = Math.max(0, compIndex - 1);
+      var subZero = Math.max(0, (subIndex || 1) - 1);
+      var repeatBlocks = row.querySelectorAll(".rep-block");
+      if (repeatBlocks.length > 1) {
+        for (var r = 0; r < repeatBlocks.length; r++) {
+          repeatBlocks[r].classList.toggle("is-active", r === repeatZero);
+        }
+        var counter = row.querySelector(".rep-counter");
+        if (counter) counter.textContent = Math.min(repeatZero + 1, repeatBlocks.length) + " / " + repeatBlocks.length;
+        var fieldBreakdown = row.querySelector(".field-breakdown");
+        if (fieldBreakdown) syncFieldCopy(fieldBreakdown, Math.min(repeatZero + 1, repeatBlocks.length));
+      }
+      var input = row.querySelector(
+        '[data-role="sub"][data-repeat-index="' + repeatZero + '"]' +
+        '[data-comp-index="' + compZero + '"][data-sub-index="' + subZero + '"]'
+      );
+      if (input) {
+        var componentRow = input.closest(".comp-row");
+        if (componentRow) {
+          componentRow.classList.add("editor-active-subfield");
+          subfieldTarget = componentRow;
+        }
+        var subChip = input.closest(".sub-chip");
+        if (subChip) {
+          subChip.classList.add("editor-active-subcomponent");
+          subfieldTarget = subChip;
+        }
+      }
+    }
+
+    var scrollTarget = subfieldTarget || row;
+    if (scrollTarget.offsetParent !== null) {
+      scrollTarget.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }
 
@@ -337,7 +384,7 @@
 
     var label = seg + "-" + index + "  " + fieldLabel;
     if (fieldStart == null || fieldEnd == null || fieldEnd <= fieldStart) {
-      return { label: label, seg: seg, field: index, from: null, to: null };
+      return { label: label, seg: seg, field: index, repeat: 1, comp: 1, sub: 1, from: null, to: null };
     }
 
     var raw = text.slice(fieldStart, fieldEnd);
@@ -394,6 +441,9 @@
       label: label,
       seg: seg,
       field: index,
+      repeat: repeatIndex,
+      comp: compIndex,
+      sub: subIndex,
       from: line.from + fieldStart + chunkStart,
       to: line.from + fieldStart + chunkEnd
     };
@@ -408,21 +458,60 @@
     if (!/^[A-Z0-9]{3}$/.test(seg)) return null;
     var fs = seg === "MSH" ? lineText.charAt(3) || "|" : "|";
     var index = null;
+    var fieldStart = null;
     if (seg === "MSH") {
-      if (offset === 3) index = 1;
+      if (offset === 3) return { seg: seg, field: 1, repeat: 1, comp: 1, sub: 1 };
       else if (offset >= 4) {
         index = 2;
+        fieldStart = 4;
         for (var m = 4; m < lineText.length && m < offset; m++) {
-          if (lineText.charAt(m) === fs) index++;
+          if (lineText.charAt(m) === fs) {
+            index++;
+            fieldStart = m + 1;
+          }
         }
       }
     } else if (offset >= 3) {
       index = 0;
       for (var n = 3; n < lineText.length && n <= offset; n++) {
-        if (lineText.charAt(n) === fs) index++;
+        if (lineText.charAt(n) === fs) {
+          index++;
+          fieldStart = n + 1;
+        }
       }
     }
-    return index ? { seg: seg, field: index } : null;
+    if (!index || fieldStart == null) return null;
+
+    var fieldEnd = lineText.indexOf(fs, Math.max(fieldStart, offset));
+    if (fieldEnd < 0) fieldEnd = lineText.length;
+    var raw = lineText.slice(fieldStart, fieldEnd);
+    var rel = Math.max(0, Math.min(offset - fieldStart, Math.max(0, raw.length - 1)));
+    var compSep = "^";
+    var repSep = "~";
+    var subSep = "&";
+    if (seg === "MSH") {
+      var enc = lineText.slice(4).split(fs)[0] || "";
+      compSep = enc.charAt(0) || compSep;
+      repSep = enc.charAt(1) || repSep;
+      subSep = enc.charAt(3) || subSep;
+    }
+    var repeatIndex = 1;
+    var compIndex = 1;
+    var subIndex = 1;
+    for (var p = 0; p < rel; p++) {
+      var ch = raw.charAt(p);
+      if (ch === repSep) {
+        repeatIndex++;
+        compIndex = 1;
+        subIndex = 1;
+      } else if (ch === compSep) {
+        compIndex++;
+        subIndex = 1;
+      } else if (ch === subSep) {
+        subIndex++;
+      }
+    }
+    return { seg: seg, field: index, repeat: repeatIndex, comp: compIndex, sub: subIndex };
   }
 
   function showEditorHint(view, event) {
@@ -714,7 +803,13 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
             var segIdx = segIndexForLine(update.state, lineNo);
             highlightSegment(segIdx);
             var info = fieldAtEditorPos(update.state, head);
-            highlightBreakdownField(segIdx, info ? info.field : null);
+            highlightBreakdownField(
+              segIdx,
+              info ? info.field : null,
+              info ? info.repeat : null,
+              info ? info.comp : null,
+              info ? info.sub : null
+            );
           }
         }),
         CM.EditorView.domEventHandlers({
