@@ -13,7 +13,7 @@
     <link rel="icon" href="assets/dude_sqizzle_shaded.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/dude_sqizzle_shaded.svg" />
     <link rel="stylesheet" href="assets/vendor/material-symbols/material-symbols-rounded.css" />
-    <link rel="stylesheet" href="assets/css/styles.css?v=mobile-search-help-1" />
+    <link rel="stylesheet" href="assets/css/styles.css?v=mobile-search-help-2" />
 </head>
 
 <body>
@@ -26,7 +26,7 @@
                     </div>
                     <div class="brand-copy">
                         <h1>HL7 Message Explorer</h1>
-                        <span class="app-version" data-app-version>v0.0002</span>
+                        <span class="app-version" data-app-version>v0.0003</span>
                     </div>
                 </div>
                 <div class="toolbar">
@@ -165,15 +165,15 @@
                             <span class="search-help-chevron" aria-hidden="true">⌄</span>
                         </button>
                         <div id="searchHint" class="path" style="margin-top:6px">
-                            Examples: “PID”, “Patient Name”, “GLUCOSE”, “mg/dL” — or a path to jump: “PID.5.1”, “PID:5”, “OBX.5.2”
+                            Examples: “PID”, “Patient Name”, “GLUCOSE”, “mg/dL”, or paths “PID.5.1”, “PID:5”, “OBX.5.2”.
                         </div>
                     </div>
 
                     <div class="right">
                         <div class="help" id="breakdownTip">
-                            Tip: click any value to edit. Paths use
-                            <span class="mono">SEG.F[.C[.S]]</span> with repeat indices like
-                            <span class="mono">F(n)</span>. Use +/− on repeats.
+                            Tip: click values to edit. Paths use
+                            <span class="mono">SEG.F[.C[.S]]</span>; repeats use
+                            <span class="mono">F(n)</span> and +/−.
                         </div>
                         <div class="tree" id="tree"></div>
                     </div>

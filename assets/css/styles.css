@@ -3238,4 +3238,21 @@ body.dark .cm-hl7-id  { color: #aab2c7; }
   .pane-breakdown.search-help-expanded .search-help-chevron {
     transform: rotate(180deg);
   }
+
+  .pane-breakdown.search-help-expanded #searchHint,
+  .pane-breakdown.search-help-expanded #breakdownTip {
+    display: block;
+  }
+
+  #searchHint {
+    margin-top: 4px !important;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  #breakdownTip {
+    padding: 5px 10px 7px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
 }
