@@ -3265,6 +3265,190 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     });
   }
 
+  function setupHelpGuide() {
+    var btn = document.getElementById("btnHelp");
+    if (!btn) return;
+
+    var overlay = null;
+    var refreshQueued = false;
+    var activeHelpIndex = 0;
+    var helpItems = [
+      { selector: "#btnTheme", title: "Theme", text: "Switch light/dark mode." },
+      { selector: "#selVersion", title: "HL7 Version", text: "Choose the schema used by Breakdown." },
+      { selector: "#btnSettings", title: "Settings", text: "Open app display, layout, and saved-state settings." },
+      { selector: "#btnTabInput", title: "HL7 Input tab", text: "Show the message editor on mobile." },
+      { selector: "#btnTabBreakdown", title: "Breakdown tab", text: "Show parsed field details on mobile." },
+      { selector: "#btnToggleInputPane", title: "Focus input", text: "Expand HL7 Input." },
+      { selector: "#selSample", title: "Sample", text: "Load a built-in or saved message." },
+      { selector: "#customSampleTitle", title: "Sample name", text: "Name a new sample, or leave blank to overwrite selected user sample." },
+      { selector: "#btnAddSample", title: "Save sample", text: "Save the current message." },
+      { selector: "#btnDeleteSample", title: "Delete sample", text: "Delete the selected user sample." },
+      { selector: "#btnWrap", title: "Word wrap", text: "Toggle editor wrapping." },
+      { selector: "#btnSendHttp", title: "Send HTTP", text: "Send the current message to an endpoint." },
+      { selector: "#btnAnonymizePid", title: "Anonymise PID", text: "Replace PID data with configured fake data." },
+      { selector: "#btnAnonSettings", title: "Anonymisation settings", text: "Configure anonymisation behaviour." },
+      { selector: "#btnRestorePid", title: "Restore PID", text: "Restore original PID data." },
+      { selector: "#cmEditor", title: "HL7 Input", text: "Edit raw HL7. Selecting a field highlights it in Breakdown." },
+      { selector: ".font-controls", title: "Editor font size", text: "Increase / decrease current HL7 font." },
+      { selector: "#btnToggleBreakdownPane", title: "Focus Breakdown", text: "Expand Breakdown." },
+      { selector: "#badgeSeg", title: "Segments", text: "Visible segment count." },
+      { selector: "#badgeFld", title: "Fields", text: "Visible field count." },
+      { selector: "#badgeUnsupported", title: "Unsupported fields", text: "Click to filter unsupported fields." },
+      { selector: "#fldSearch", title: "Search", text: "Filter by segment, field, value, or path." },
+      { selector: "#tree", title: "Breakdown", text: "Parsed segments, editable values, and copyable paths." }
+    ];
+
+    function isVisible(el) {
+      if (!el || el.hidden) return false;
+      var style = window.getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
+      var rect = el.getBoundingClientRect();
+      return rect.width > 2 && rect.height > 2 && rect.bottom > 0 && rect.right > 0 &&
+        rect.top < window.innerHeight && rect.left < window.innerWidth;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function renderOverlay() {
+      if (!overlay) return;
+      overlay.querySelectorAll(".help-guide-ring, .help-guide-panel").forEach(function (node) {
+        node.remove();
+      });
+      var svg = overlay.querySelector(".help-guide-lines");
+      svg.innerHTML = "";
+      var visibleItems = [];
+
+      helpItems.forEach(function (item, index) {
+        var el = document.querySelector(item.selector);
+        if (!isVisible(el)) return;
+        visibleItems.push({ item: item, index: index, el: el, rect: el.getBoundingClientRect() });
+      });
+      if (!visibleItems.length) return;
+      if (!visibleItems.some(function (entry) { return entry.index === activeHelpIndex; })) {
+        activeHelpIndex = visibleItems[0].index;
+      }
+
+      visibleItems.forEach(function (entry, visibleIndex) {
+        var rect = entry.rect;
+        var ring = document.createElement("div");
+        ring.className = "help-guide-ring" + (entry.index === activeHelpIndex ? " active" : "");
+        ring.style.left = Math.max(2, rect.left - 4) + "px";
+        ring.style.top = Math.max(2, rect.top - 4) + "px";
+        ring.style.width = rect.width + 8 + "px";
+        ring.style.height = rect.height + 8 + "px";
+        ring.setAttribute("data-num", String(visibleIndex + 1));
+        ring.addEventListener("click", function () {
+          activeHelpIndex = entry.index;
+          renderOverlay();
+        });
+        overlay.appendChild(ring);
+      });
+
+      var activeEntry = visibleItems.find(function (entry) { return entry.index === activeHelpIndex; });
+      var panel = document.createElement("div");
+      panel.className = "help-guide-panel";
+      if (activeEntry && activeEntry.rect.left + activeEntry.rect.width / 2 > window.innerWidth / 2) {
+        panel.classList.add("dock-left");
+      } else {
+        panel.classList.add("dock-right");
+      }
+      panel.innerHTML =
+        '<div class="help-guide-panel-head">' +
+        '<strong>Help guide</strong><span>Choose an item to point to its control.</span>' +
+        "</div>";
+      var list = document.createElement("div");
+      list.className = "help-guide-list";
+      list.addEventListener("wheel", function (e) {
+        e.stopPropagation();
+      }, { passive: true });
+      list.addEventListener("touchmove", function (e) {
+        e.stopPropagation();
+      }, { passive: true });
+      panel.appendChild(list);
+      overlay.appendChild(panel);
+
+      visibleItems.forEach(function (entry, visibleIndex) {
+        var row = document.createElement("button");
+        row.type = "button";
+        row.className = "help-guide-item" + (entry.index === activeHelpIndex ? " active" : "");
+        row.innerHTML =
+          '<span class="help-guide-num">' + (visibleIndex + 1) + "</span>" +
+          '<span><strong>' + escText(entry.item.title) + "</strong><small>" +
+          escText(entry.item.text) + "</small></span>";
+        row.addEventListener("click", function () {
+          activeHelpIndex = entry.index;
+          renderOverlay();
+        });
+        list.appendChild(row);
+      });
+
+      if (activeEntry) {
+        var targetRect = activeEntry.rect;
+        var panelRect = panel.getBoundingClientRect();
+        var x1 = targetRect.left + targetRect.width / 2;
+        var y1 = targetRect.top + targetRect.height / 2;
+        var x2 = panel.classList.contains("dock-left") ? panelRect.right : panelRect.left;
+        var y2 = clamp(y1, panelRect.top + 24, panelRect.bottom - 24);
+        var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("class", "help-guide-line");
+        line.setAttribute("x1", String(x1));
+        line.setAttribute("y1", String(y1));
+        line.setAttribute("x2", String(x2));
+        line.setAttribute("y2", String(y2));
+        svg.appendChild(line);
+      }
+    }
+
+    function scheduleRender(e) {
+      if (!overlay || refreshQueued) return;
+      if (e && e.target && overlay.contains(e.target)) return;
+      refreshQueued = true;
+      requestAnimationFrame(function () {
+        refreshQueued = false;
+        renderOverlay();
+      });
+    }
+
+    function close() {
+      if (!overlay) return;
+      overlay.remove();
+      overlay = null;
+      btn.setAttribute("aria-pressed", "false");
+      btn.classList.remove("active");
+      window.removeEventListener("resize", scheduleRender);
+      window.removeEventListener("scroll", scheduleRender, true);
+      document.removeEventListener("keydown", onKeydown);
+    }
+
+    function onKeydown(e) {
+      if (e.key === "Escape") close();
+    }
+
+    function open() {
+      if (overlay) return;
+      overlay = document.createElement("div");
+      overlay.className = "help-guide-overlay";
+      overlay.innerHTML =
+        '<svg class="help-guide-lines" aria-hidden="true"></svg>' +
+        '<button type="button" class="help-guide-close">Close help</button>';
+      document.body.appendChild(overlay);
+      overlay.querySelector(".help-guide-close").addEventListener("click", close);
+      btn.setAttribute("aria-pressed", "true");
+      btn.classList.add("active");
+      window.addEventListener("resize", scheduleRender);
+      window.addEventListener("scroll", scheduleRender, true);
+      document.addEventListener("keydown", onKeydown);
+      renderOverlay();
+    }
+
+    btn.addEventListener("click", function () {
+      if (overlay) close();
+      else open();
+    });
+  }
+
   function setupPaneFocusControls() {
     var grid = document.querySelector(".grid");
     var btnInput = document.getElementById("btnToggleInputPane");
@@ -3306,6 +3490,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     setupSmoothScroll();
     setupMobilePaneTabs();
     setupPaneFocusControls();
+    setupHelpGuide();
     applyFontSize();
     applyStripe();
     applyLayoutSettings();
