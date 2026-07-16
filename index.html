@@ -62,15 +62,17 @@
             <div class="grid">
                <section id="pane-input" class="pane pane-input" data-pane="input">
                     <header>
-                        <h2 style="display:flex; align-items:center; gap:12px;">
-                            HL7 Input
-                            <div id="headerHintBox" class="header-hint" hidden></div>
-                        </h2>
-                        <div class="pane-controls">
+                        <div class="pane-title-row">
+                            <h2 style="display:flex; align-items:center; gap:12px;">
+                                HL7 Input
+                                <div id="headerHintBox" class="header-hint" hidden></div>
+                            </h2>
                             <button id="btnToggleInputPane" class="ghost icon-only pane-toggle" title="Focus HL7 Input"
                                 aria-label="Focus HL7 Input" aria-pressed="false">
                                 <span class="pane-toggle-glyph" aria-hidden="true">⛶</span>
                             </button>
+                        </div>
+                        <div class="pane-controls">
                             <div class="sample-picker">
                                 <label class="pane-select-control">
                                     <span>Sample</span>
@@ -113,17 +115,17 @@
                                     <span class="material-symbols-rounded" aria-hidden="true">undo</span>
                                 </button>
                             </div>
-                            <div class="font-controls" aria-label="Font size controls">
-                                <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
-                                <span id="fontSizeLabel" class="font-size-label">13px</span>
-                                <button id="btnFontUp" class="icon-btn-sq" title="Increase font size">A+</button>
-                            </div>
                         </div>
                     </header>
                     <!-- CodeMirror will mount here -->
                     <div id="cmEditor" class="cm-host"></div>
-                    <footer style="padding: 6px 16px; border-top: 1px solid var(--border); min-height: 38px; display: flex; align-items: center;">
-                        <div id="footerHintBox" class="header-hint" style="background:transparent; padding:0; font-size:13px; max-width:none;" hidden></div>
+                    <footer class="input-footer">
+                        <div id="footerHintBox" class="header-hint footer-hint" hidden></div>
+                        <div class="font-controls" aria-label="Font size controls">
+                            <button id="btnFontDown" class="icon-btn-sq" title="Decrease font size">A−</button>
+                            <span id="fontSizeLabel" class="font-size-label">13px</span>
+                            <button id="btnFontUp" class="icon-btn-sq" title="Increase font size">A+</button>
+                        </div>
                     </footer>
                 </section>
 
