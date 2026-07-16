@@ -2320,6 +2320,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     uiStyle: "default",
     uiDensity: "default",
     smoothScroll: true,
+    motionEffects: true,
     hintMode: "float"
   };
   var settings = loadSettings();
@@ -2479,6 +2480,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     }
   }
 
+  function applyMotionSettings() {
+    document.documentElement.classList.toggle("reduced-motion", settings.motionEffects === false);
+  }
+
   function setupSettings() {
     var overlay = document.getElementById("settingsOverlay");
     var btnOpen = document.getElementById("btnSettings");
@@ -2493,6 +2498,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var inStyle = document.getElementById("setUiStyle");
     var inDensity = document.getElementById("setUiDensity");
     var inSmooth = document.getElementById("setSmoothScroll");
+    var inMotion = document.getElementById("setMotionEffects");
     var inHint = document.getElementById("setHintMode");
     var btnExportState = document.getElementById("settingsExportState");
     var btnImportState = document.getElementById("settingsImportState");
@@ -2523,6 +2529,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       if (inStyle) inStyle.value = settings.uiStyle || "default";
       if (inDensity) inDensity.value = settings.uiDensity || "default";
       if (inSmooth) inSmooth.checked = settings.smoothScroll !== false;
+      if (inMotion) inMotion.checked = settings.motionEffects !== false;
       if (inHint) inHint.value = settings.hintMode || "float";
       syncLastSaved();
     }
@@ -2554,6 +2561,13 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       inSmooth.addEventListener("change", function () {
         settings.smoothScroll = inSmooth.checked;
         saveSettings();
+      });
+    }
+    if (inMotion) {
+      inMotion.addEventListener("change", function () {
+        settings.motionEffects = inMotion.checked;
+        saveSettings();
+        applyMotionSettings();
       });
     }
     if (inHint) {
@@ -2602,6 +2616,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       applyLayoutSettings();
       applyUiStyle();
       applyUiDensity();
+      applyMotionSettings();
     });
     if (btnExportState) {
       btnExportState.addEventListener("click", function () {
@@ -2627,6 +2642,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
             applyLayoutSettings();
             applyUiStyle();
             applyUiDensity();
+            applyMotionSettings();
             reloadStoredFontSize();
             setEditorText(loadStoredMessage());
             parseNow();
@@ -2994,6 +3010,39 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     });
   }
 
+  function setupPaneFocusControls() {
+    var grid = document.querySelector(".grid");
+    var btnInput = document.getElementById("btnToggleInputPane");
+    var btnBreakdown = document.getElementById("btnToggleBreakdownPane");
+    if (!grid || !btnInput || !btnBreakdown) return;
+
+    function setButtonState(button, focused, paneName) {
+      button.setAttribute("aria-pressed", focused ? "true" : "false");
+      button.setAttribute("title", focused ? "Restore split panes" : "Focus " + paneName);
+      button.setAttribute("aria-label", focused ? "Restore split panes" : "Focus " + paneName);
+      var glyph = button.querySelector(".pane-toggle-glyph");
+      if (glyph) glyph.textContent = focused ? "↔" : "⛶";
+    }
+
+    function render(focus) {
+      var inputFocused = focus === "input";
+      var breakdownFocused = focus === "breakdown";
+      grid.classList.toggle("pane-focus-input", inputFocused);
+      grid.classList.toggle("pane-focus-breakdown", breakdownFocused);
+      setButtonState(btnInput, inputFocused, "HL7 Input");
+      setButtonState(btnBreakdown, breakdownFocused, "Breakdown");
+      if (cmView) requestAnimationFrame(function () { cmView.requestMeasure(); });
+    }
+
+    btnInput.addEventListener("click", function () {
+      render(grid.classList.contains("pane-focus-input") ? "" : "input");
+    });
+    btnBreakdown.addEventListener("click", function () {
+      render(grid.classList.contains("pane-focus-breakdown") ? "" : "breakdown");
+    });
+    render("");
+  }
+
   async function bindUI() {
     setupGutter();
     setupSettings();
@@ -3001,11 +3050,13 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     bindAnonSettingsUI();
     setupSmoothScroll();
     setupMobilePaneTabs();
+    setupPaneFocusControls();
     applyFontSize();
     applyStripe();
     applyLayoutSettings();
     applyUiStyle();
     applyUiDensity();
+    applyMotionSettings();
 
     var btnFontUp = document.getElementById("btnFontUp");
     var btnFontDown = document.getElementById("btnFontDown");

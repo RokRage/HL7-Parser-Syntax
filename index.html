@@ -67,9 +67,9 @@
                             <div id="headerHintBox" class="header-hint" hidden></div>
                         </h2>
                         <div class="pane-controls">
-                            <button id="btnToggleInputPane" class="ghost icon-only pane-toggle" title="Collapse HL7 Input"
-                                aria-label="Collapse HL7 Input" aria-expanded="true">
-                                <span class="pane-toggle-glyph" aria-hidden="true">^</span>
+                            <button id="btnToggleInputPane" class="ghost icon-only pane-toggle" title="Focus HL7 Input"
+                                aria-label="Focus HL7 Input" aria-pressed="false">
+                                <span class="pane-toggle-glyph" aria-hidden="true">⛶</span>
                             </button>
                             <div class="sample-picker">
                                 <label class="pane-select-control">
@@ -134,9 +134,9 @@
                     <header>
                         <h2>Breakdown</h2>
                         <div class="pane-controls">
-                            <button id="btnToggleBreakdownPane" class="ghost icon-only pane-toggle" title="Collapse Breakdown"
-                                aria-label="Collapse Breakdown" aria-expanded="true">
-                                <span class="pane-toggle-glyph" aria-hidden="true">^</span>
+                            <button id="btnToggleBreakdownPane" class="ghost icon-only pane-toggle" title="Focus Breakdown"
+                                aria-label="Focus Breakdown" aria-pressed="false">
+                                <span class="pane-toggle-glyph" aria-hidden="true">⛶</span>
                             </button>
                             <div class="meta">
                             <span class="badge" id="badgeSeg">0 segments</span>
@@ -293,6 +293,10 @@
                 <label class="setting-row">
                     <span>Smooth mouse scrolling</span>
                     <input type="checkbox" id="setSmoothScroll" />
+                </label>
+                <label class="setting-row">
+                    <span>CSS fades / animations</span>
+                    <input type="checkbox" id="setMotionEffects" />
                 </label>
                 <div class="setting-group-title">Load / save</div>
                 <div class="settings-state-actions">
