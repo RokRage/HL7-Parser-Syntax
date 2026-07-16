@@ -18,6 +18,7 @@
   var currentVersion = "2.4";
   var currentModel = { delims: null, segments: [] };
   var unsupportedFilterOn = false;
+  var collapsedSegmentKeys = Object.create(null);
 
   // ================= CodeMirror setup (local bundled ESM) =================
   let cmView = null;
@@ -1956,6 +1957,21 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     cmView.dispatch({ effects: CM.unsupportedFlashEffect.of(ranges) });
   }
 
+  function setSegmentCollapsed(card, collapsed, remember) {
+    if (!card) return;
+    var header = card.querySelector(".segment-header");
+    var body = card.querySelector(".segment-body");
+    var key = card.getAttribute("data-seg-key") || "";
+    card.classList.toggle("collapsed", collapsed);
+    if (header) header.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    if (body) body.hidden = collapsed;
+    if (remember && key) {
+      card.setAttribute("data-user-collapsed", collapsed ? "true" : "false");
+      if (collapsed) collapsedSegmentKeys[key] = true;
+      else delete collapsedSegmentKeys[key];
+    }
+  }
+
   function renderTree(model) {
     var tree = document.getElementById("tree");
     tree.innerHTML = "";
@@ -1980,16 +1996,18 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       var seg = model.segments[si];
       segmentSeen[seg.name] = (segmentSeen[seg.name] || 0) + 1;
       var segIteration = segmentSeen[seg.name];
+      var segmentKey = seg.name + ":" + segIteration;
       var card = document.createElement("div");
       card.className = "segment-card";
       card.setAttribute("data-seg-index", String(si));
+      card.setAttribute("data-seg-key", segmentKey);
 
-      var head = document.createElement("div");
-      head.style.display = "flex";
-      head.style.justifyContent = "space-between";
-      head.style.alignItems = "center";
-      head.style.padding = "12px 14px";
-      head.style.fontWeight = "800";
+      var head = document.createElement("button");
+      var segmentBodyId = "segment-body-" + si;
+      head.type = "button";
+      head.className = "segment-header";
+      head.setAttribute("aria-expanded", "true");
+      head.setAttribute("aria-controls", segmentBodyId);
       head.innerHTML =
         '<span class="seg-title" data-seg="' +
         seg.name +
@@ -2002,12 +2020,22 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
             segIteration +
             "</span>"
           : "") +
-        '</span><span class="path">SEG: ' +
+        '</span><span class="segment-header-meta"><span class="path">SEG: ' +
         seg.name +
-        "</span>";
+        '</span><span class="segment-chevron" aria-hidden="true">⌄</span></span>';
+      head.addEventListener("click", function () {
+        var targetCard = this.closest(".segment-card");
+        setSegmentCollapsed(
+          targetCard,
+          !targetCard.classList.contains("collapsed"),
+          true
+        );
+      });
       card.appendChild(head);
 
       var table = document.createElement("table");
+      table.id = segmentBodyId;
+      table.className = "segment-body";
 
       var thead = document.createElement("thead");
       thead.innerHTML =
@@ -2102,6 +2130,9 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
       table.appendChild(tbody);
       card.appendChild(table);
+      var startsCollapsed = !!collapsedSegmentKeys[segmentKey];
+      card.setAttribute("data-user-collapsed", startsCollapsed ? "true" : "false");
+      setSegmentCollapsed(card, startsCollapsed, false);
       tree.appendChild(card);
     }
 
@@ -2134,6 +2165,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       var on = String(i) === String(segIdx);
       cards[i].classList.toggle("active", on);
       if (on && cards[i].style.display !== "none") {
+        setSegmentCollapsed(cards[i], false, false);
         scrollRightPaneToSegment(cards[i]);
       }
     }
@@ -2251,7 +2283,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         }
       });
       card.style.display = anyVisible ? "" : "none";
-      if (anyVisible) visibleSegments++;
+      if (anyVisible) {
+        visibleSegments++;
+        setSegmentCollapsed(card, false, false);
+      }
     });
 
     updateBreakdownBadges(visibleSegments, visibleFields, visibleUnsupported);
@@ -2286,7 +2321,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         }
       });
       card.style.display = anyVisible ? "" : "none";
-      if (anyVisible) visibleSegments++;
+      if (anyVisible) {
+        visibleSegments++;
+        setSegmentCollapsed(card, false, false);
+      }
     });
 
     updateBreakdownBadges(visibleSegments, visibleFields, visibleFields);
@@ -2356,7 +2394,17 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         anyVisible = anyVisible || ok;
       });
       card.style.display = anyVisible ? "" : "none";
-      if (anyVisible) visibleSegments++;
+      if (anyVisible) {
+        visibleSegments++;
+        if (q) setSegmentCollapsed(card, false, false);
+        else {
+          setSegmentCollapsed(
+            card,
+            card.getAttribute("data-user-collapsed") === "true",
+            false
+          );
+        }
+      }
     });
 
     updateBreakdownBadges(visibleSegments, visibleFields, visibleUnsupported);
@@ -2370,6 +2418,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       var t = e.target;
       var role = t.getAttribute("data-role");
       if (!role || role !== "raw") return;
+      setSegmentCollapsed(t.closest(".segment-card"), false, true);
 
       var si = +t.getAttribute("data-seg-index");
       var fi = +t.getAttribute("data-field-index");
@@ -2394,6 +2443,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       var t = e.target;
       var role = t.getAttribute("data-role");
       if (role === "sub") {
+        setSegmentCollapsed(t.closest(".segment-card"), false, true);
         var si2 = +t.getAttribute("data-seg-index");
         var fi2 = +t.getAttribute("data-field-index");
         var ri2 = +t.getAttribute("data-repeat-index");

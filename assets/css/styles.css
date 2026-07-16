@@ -627,7 +627,7 @@ body.dragging-col {
   .segment-card {
     margin: 8px 0;
   }
-  .segment-card > div:first-child {
+  .segment-card > .segment-header {
     padding: 10px 12px !important;
     gap: 10px;
     flex-wrap: wrap;
@@ -1092,6 +1092,50 @@ body.dark .segment-card:not(.active) {
 .segment-card.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-ghost), var(--shadow);
+}
+.segment-header {
+  width: 100%;
+  min-height: 0;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  box-shadow: none;
+  cursor: pointer;
+}
+.segment-header:hover {
+  background: rgba(122, 162, 255, 0.06);
+}
+.segment-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.segment-header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.segment-chevron {
+  display: inline-block;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.segment-card.collapsed .segment-chevron {
+  transform: rotate(-90deg);
+}
+.segment-body[hidden] {
+  display: none !important;
 }
 .seg-title {
   display: inline-flex;
@@ -1694,7 +1738,7 @@ body.dark .segment-card:not(.active) {
     margin: 6px 0;
     border-radius: 10px;
   }
-  .segment-card > div:first-child {
+  .segment-card > .segment-header {
     padding: 8px 10px !important;
     min-height: 38px;
   }
@@ -1979,7 +2023,7 @@ body.dark .segment-card:not(.active) {
   .segment-card {
     margin: 5px 0;
   }
-  .segment-card > div:first-child {
+  .segment-card > .segment-header {
     padding: 7px 9px !important;
     min-height: 34px;
   }
@@ -2207,9 +2251,9 @@ body.ui-style-clinical-blue .pane {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ghost) 70%, transparent), var(--shadow);
 }
 body.ui-style-clinical .pane > header,
-body.ui-style-clinical .segment-card > div:first-child,
+body.ui-style-clinical .segment-card > .segment-header,
 body.ui-style-clinical-blue .pane > header,
-body.ui-style-clinical-blue .segment-card > div:first-child {
+body.ui-style-clinical-blue .segment-card > .segment-header {
   background: linear-gradient(180deg, var(--accent-ghost), transparent);
 }
 body.ui-style-clinical .segment-card {
@@ -2265,12 +2309,12 @@ body.ui-style-paper .segment-card {
   box-shadow: var(--shadow);
 }
 body.ui-style-paper .pane > header,
-body.ui-style-paper .segment-card > div:first-child,
+body.ui-style-paper .segment-card > .segment-header,
 body.ui-style-paper .segment-card thead th {
   background: #f7ead3;
 }
 body.dark.ui-style-paper .pane > header,
-body.dark.ui-style-paper .segment-card > div:first-child,
+body.dark.ui-style-paper .segment-card > .segment-header,
 body.dark.ui-style-paper .segment-card thead th {
   background: #2a2117;
 }
@@ -2310,7 +2354,7 @@ body.ui-style-lab-light .segment-card {
   border-left: 6px solid var(--accent);
   box-shadow: 0 4px 16px rgba(15, 60, 90, 0.08);
 }
-body.ui-style-lab-light .segment-card > div:first-child {
+body.ui-style-lab-light .segment-card > .segment-header {
   background: linear-gradient(90deg, var(--accent-ghost), transparent);
 }
 body.ui-style-lab-light .badge,
@@ -2384,7 +2428,7 @@ body.ui-style-console .segment-card {
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
   border-width: 2px;
 }
-body.ui-style-console .segment-card > div:first-child {
+body.ui-style-console .segment-card > .segment-header {
   background: var(--repeat-bg);
   border-bottom: 2px solid var(--border);
 }
@@ -2565,9 +2609,9 @@ body.ui-style-clinical-blue .app > .container > header {
   border-top-right-radius: 0;
 }
 body.ui-style-clinical .pane > header,
-body.ui-style-clinical .segment-card > div:first-child,
+body.ui-style-clinical .segment-card > .segment-header,
 body.ui-style-clinical-blue .pane > header,
-body.ui-style-clinical-blue .segment-card > div:first-child {
+body.ui-style-clinical-blue .segment-card > .segment-header {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }

@@ -1,10 +1,10 @@
-const CACHE_VERSION = "hl7-message-explorer-v0.0006";
+const CACHE_VERSION = "hl7-message-explorer-v0.0007";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./assets/css/styles.css?v=breakdown-search-surface-2",
-  "./assets/js/app.js?v=mobile-search-help-1",
+  "./assets/css/styles.css?v=collapsible-segments-3",
+  "./assets/js/app.js?v=collapsible-segments-3",
   "./assets/js/hl7-fields-2x.js",
   "./assets/js/hl7-datatypes-2x.js",
   "./assets/js/hl7-field-desc-2x.js",
