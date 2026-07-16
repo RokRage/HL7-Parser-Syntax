@@ -1,9 +1,9 @@
-const CACHE_VERSION = "hl7-message-explorer-v23";
+const CACHE_VERSION = "hl7-message-explorer-v24";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./assets/css/styles.css?v=breakdown-field-contrast-2",
+  "./assets/css/styles.css?v=breakdown-field-contrast-3",
   "./assets/js/app.js?v=mobile-badge-labels-1",
   "./assets/js/hl7-fields-2x.js",
   "./assets/js/hl7-datatypes-2x.js",
