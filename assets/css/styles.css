@@ -506,6 +506,16 @@ body.dragging-col {
     background: rgba(160, 175, 200, 0.04);
     overflow: hidden;
   }
+  .segment-card tr.field-row.schema-unsupported {
+    border-color: rgba(239, 68, 68, 0.75);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.28);
+  }
+  .segment-card tr.schema-unsupported td,
+  .segment-card tr.schema-unsupported td:first-child,
+  .segment-card tr.schema-unsupported td:last-child {
+    border-left: 0;
+    border-right: 0;
+  }
   .segment-card td {
     padding: 8px 10px !important;
     border: 0;
@@ -933,6 +943,36 @@ body.dark .badge {
 }
 .segment-card tbody tr:last-child td {
   border-bottom: 0;
+}
+.segment-card tr.schema-unsupported td {
+  border-top: 1px solid rgba(239, 68, 68, 0.5);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.06);
+}
+.segment-card tr.schema-unsupported td:first-child {
+  border-left: 3px solid #ef4444;
+}
+.segment-card tr.schema-unsupported td:last-child {
+  border-right: 1px solid rgba(239, 68, 68, 0.5);
+}
+.schema-unsupported-name {
+  color: #ef4444;
+  font-weight: 800;
+}
+.schema-note {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font: 700 10px var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: normal;
 }
 .segment-card th:nth-child(1),
 .segment-card td:nth-child(1) {

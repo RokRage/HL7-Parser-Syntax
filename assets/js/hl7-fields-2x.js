@@ -21,8 +21,7 @@ window.FIELD_NAMES_BY_VERSION = {
       17: "Country Code",
       18: "Character Set",
       19: "Principal Language of Message",
-      20: "Alternate Character Set Handling Scheme",
-      21: "Message Profile Identifier"
+      20: "Alternate Character Set Handling Scheme"
     },
     EVN: {
       1: "Event Type Code",
@@ -30,8 +29,7 @@ window.FIELD_NAMES_BY_VERSION = {
       3: "Date/Time Planned Event",
       4: "Event Reason Code",
       5: "Operator ID",
-      6: "Event Occurred",
-      7: "Event Facility"
+      6: "Event Occurred"
     },
     PID: {
       1: "Set ID - PID",
@@ -63,9 +61,7 @@ window.FIELD_NAMES_BY_VERSION = {
       27: "Veterans Military Status",
       28: "Nationality",
       29: "Patient Death Date and Time",
-      30: "Patient Death Indicator",
-      31: "Identity Unknown Indicator",
-      32: "Identity Reliability Code"
+      30: "Patient Death Indicator"
     },
     PD1: {
       1: "Living Dependency",
@@ -221,15 +217,7 @@ window.FIELD_NAMES_BY_VERSION = {
       21: "Ordering Facility Name",
       22: "Ordering Facility Address",
       23: "Ordering Facility Phone Number",
-      24: "Ordering Provider Address",
-      25: "Order Status Modifier",
-      26: "Advanced Beneficiary Notice Override Reason",
-      27: "Filler's Expected Availability Date/Time",
-      28: "Confidentiality Code",
-      29: "Order Type",
-      30: "Enterer Authorization Mode",
-      31: "Parent Universal Service Identifier",
-      32: "Advanced Beneficiary Notice Date"
+      24: "Ordering Provider Address"
     },
     OBR: {
       1: "Set ID - OBR",
@@ -276,12 +264,7 @@ window.FIELD_NAMES_BY_VERSION = {
       42: "Escort Required",
       43: "Planned Patient Transport Comment",
       44: "Procedure Code",
-      45: "Procedure Code Modifier",
-      46: "Placer Supplemental Service Information",
-      47: "Filler Supplemental Service Information",
-      48: "Medically Necessary Duplicate Procedure Reason",
-      49: "Result Handling",
-      50: "Parent Universal Service Identifier"
+      45: "Procedure Code Modifier"
     },
     OBX: {
       1: "Set ID - OBX",
@@ -300,9 +283,7 @@ window.FIELD_NAMES_BY_VERSION = {
       14: "Date/Time of the Observation",
       15: "Producer's ID",
       16: "Responsible Observer",
-      17: "Observation Method",
-      18: "Equipment Instance Identifier",
-      19: "Date/Time of the Analysis"
+      17: "Observation Method"
     },
     AL1: {
       1: "Set ID – AL1",
@@ -324,8 +305,35 @@ window.FIELD_NAMES_BY_VERSION = {
   "2.4": {}
 };
 
-/* For now: mirror 2.3 map into 2.4 (as in your current app). 
-   Replace with true 2.4 differences when ready. */
+/* Start with v2.3.1-compatible names for unchanged/common segments, then
+   override high-impact segments where v2.4 differs. */
 window.FIELD_NAMES_BY_VERSION["2.4"] = JSON.parse(
   JSON.stringify(window.FIELD_NAMES_BY_VERSION["2.3"])
 );
+Object.assign(window.FIELD_NAMES_BY_VERSION["2.4"].MSH, {
+  21: "Conformance Statement ID"
+});
+Object.assign(window.FIELD_NAMES_BY_VERSION["2.4"].EVN, {
+  7: "Event Facility"
+});
+Object.assign(window.FIELD_NAMES_BY_VERSION["2.4"].PID, {
+  31: "Identity Unknown Indicator",
+  32: "Identity Reliability Code",
+  33: "Last Update Date/Time",
+  34: "Last Update Facility",
+  35: "Species Code",
+  36: "Breed Code",
+  37: "Strain",
+  38: "Production Class Code"
+});
+Object.assign(window.FIELD_NAMES_BY_VERSION["2.4"].ORC, {
+  25: "Order Status Modifier"
+});
+Object.assign(window.FIELD_NAMES_BY_VERSION["2.4"].OBR, {
+  46: "Placer Supplemental Service Information",
+  47: "Filler Supplemental Service Information"
+});
+Object.assign(window.FIELD_NAMES_BY_VERSION["2.4"].OBX, {
+  18: "Equipment Instance Identifier",
+  19: "Date/Time of the Analysis"
+});

@@ -88,7 +88,7 @@ var DT_24 = {
   MSH: {
     1: "ST", 2: "ST", 3: "HD", 4: "HD", 5: "HD", 6: "HD", 7: "TS", 8: "ST",
     9: "MSG", 10: "ST", 11: "PT", 12: "VID", 13: "NM", 14: "ST", 15: "ID",
-    16: "ID", 17: "ID", 18: "ID", 19: "CE", 20: "ID", 21: "EI"
+    16: "ID", 17: "ID", 18: "ID", 19: "CE", 20: "ID", 21: "ID"
   },
   MSA: { 1: "ID", 2: "ST", 3: "ST", 4: "NM", 5: "ST", 6: "CE" },
   EVN: { 1: "ID", 2: "TS", 3: "TS", 4: "IS", 5: "XCN", 6: "TS", 7: "HD" },
@@ -98,7 +98,7 @@ var DT_24 = {
     16: "CE", 17: "CE", 18: "CX", 19: "ST", 20: "DLN", 21: "CX", 22: "CE",
     23: "ST", 24: "ID", 25: "NM", 26: "CE", 27: "CE", 28: "CE", 29: "TS",
     30: "ID", 31: "ID", 32: "IS", 33: "TS", 34: "HD", 35: "CE", 36: "CE",
-    37: "ST", 38: "CE", 39: "CE"
+    37: "ST", 38: "CE"
   },
   PD1: {
     1: "IS", 2: "IS", 3: "XON", 4: "XCN", 5: "IS", 6: "CE", 7: "CE", 8: "ID",
@@ -115,10 +115,10 @@ var DT_24 = {
     1: "SI", 2: "IS", 3: "PL", 4: "IS", 5: "CX", 6: "PL", 7: "XCN", 8: "XCN",
     9: "XCN", 10: "IS", 11: "PL", 12: "IS", 13: "IS", 14: "IS", 15: "IS",
     16: "IS", 17: "XCN", 18: "IS", 19: "CX", 20: "FC", 21: "IS", 22: "IS",
-    23: "IS", 24: "IS", 25: "IS", 26: "IS", 27: "IS", 28: "IS", 29: "IS",
-    30: "IS", 31: "CX", 32: "NM", 33: "NM", 34: "IS", 35: "IS", 36: "IS",
+    23: "IS", 24: "IS", 25: "DT", 26: "NM", 27: "NM", 28: "IS", 29: "IS",
+    30: "DT", 31: "IS", 32: "NM", 33: "NM", 34: "IS", 35: "DT", 36: "IS",
     37: "DLD", 38: "CE", 39: "IS", 40: "IS", 41: "IS", 42: "PL", 43: "PL",
-    44: "TS", 45: "TS", 46: "CP", 47: "CP", 48: "NM", 49: "NM", 50: "CX",
+    44: "TS", 45: "TS", 46: "NM", 47: "NM", 48: "NM", 49: "NM", 50: "CX",
     51: "IS", 52: "XCN"
   },
   PV2: {
@@ -129,14 +129,16 @@ var DT_24 = {
     1: "ID", 2: "EI", 3: "EI", 4: "EI", 5: "ID", 6: "ID", 7: "TQ", 8: "EIP",
     9: "TS", 10: "XCN", 11: "XCN", 12: "XCN", 13: "PL", 14: "XTN", 15: "TS",
     16: "CE", 17: "XON", 18: "CE", 19: "XCN", 20: "ID", 21: "XON", 22: "XAD",
-    23: "XTN", 24: "XAD"
+    23: "XTN", 24: "XAD", 25: "CWE"
   },
   OBR: {
-    1: "SI", 2: "EI", 3: "EI", 4: "CE", 5: "ID", 6: "ID", 7: "TS", 8: "TS",
-    9: "CQ", 10: "XCN", 11: "ID", 12: "CE", 13: "ST", 14: "TS", 15: "SPS",
+    1: "SI", 2: "EI", 3: "EI", 4: "CE", 5: "ID", 6: "TS", 7: "TS", 8: "TS",
+    9: "CQ", 10: "XCN", 11: "ID", 12: "CE", 13: "ST", 14: "TS", 15: "CM",
     16: "XCN", 17: "XTN", 18: "ST", 19: "ST", 20: "ST", 21: "ST", 22: "TS",
-    23: "MOC", 24: "ID", 25: "ID", 26: "CE", 27: "TQ", 28: "XCN", 29: "EIP",
-    30: "ID", 31: "CE", 32: "NDL", 33: "NDL", 34: "NDL", 35: "NDL"
+    23: "MOC", 24: "ID", 25: "ID", 26: "CE", 27: "TQ", 28: "XCN", 29: "CM",
+    30: "ID", 31: "CE", 32: "CM", 33: "CM", 34: "CM", 35: "CM",
+    36: "TS", 37: "NM", 38: "CE", 39: "CE", 40: "CE", 41: "ID", 42: "ID",
+    43: "CE", 44: "CE", 45: "CE", 46: "CE", 47: "CE"
   },
   OBX: {
     1: "SI", 2: "ID", 3: "CE", 4: "ST", 5: "Varies", 6: "CE", 7: "ST",
@@ -160,4 +162,19 @@ var DT_24 = {
   }
 };
 
-window.DATATYPE_BY_FIELD = { "2.4": DT_24, "2.3": DT_24 };
+var DT_23 = JSON.parse(JSON.stringify(DT_24));
+DT_23.MSH[9] = "CM";
+delete DT_23.MSH[21];
+delete DT_23.EVN[7];
+[31, 32, 33, 34, 35, 36, 37, 38].forEach(function (field) {
+  delete DT_23.PID[field];
+});
+delete DT_23.ORC[25];
+[46, 47].forEach(function (field) {
+  delete DT_23.OBR[field];
+});
+[18, 19].forEach(function (field) {
+  delete DT_23.OBX[field];
+});
+
+window.DATATYPE_BY_FIELD = { "2.4": DT_24, "2.3": DT_23 };

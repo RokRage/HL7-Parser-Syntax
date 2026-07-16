@@ -1382,9 +1382,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var byVer = FIELD_NAMES_BY_VERSION[currentVersion] || {};
     var segMap = byVer[seg] || {};
     if (segMap[index]) return segMap[index];
-    var altVer = currentVersion === "2.3" ? "2.4" : "2.3";
-    var alt = FIELD_NAMES_BY_VERSION[altVer] || {};
-    return alt[seg] && alt[seg][index] ? alt[seg][index] : " ";
+    return " ";
   }
 
   function gvCall(path) {
@@ -1770,14 +1768,16 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
       for (var fi = 0; fi < seg.fields.length; fi++) {
         var field = seg.fields[fi];
+        var nm = fieldName(seg.name, field.index) || "";
+        var unsupported = !nm.trim();
         fieldCount++;
         var tr = document.createElement("tr");
-        tr.className = "field-row";
+        tr.className = "field-row" + (unsupported ? " schema-unsupported" : "");
         tr.setAttribute("data-seg", seg.name);
         tr.setAttribute("data-field-index", String(field.index));
         tr.setAttribute(
           "data-field-name",
-          (fieldName(seg.name, field.index) || "").toLowerCase()
+          nm.toLowerCase()
         );
         tr.setAttribute("data-raw", (field.raw || "").toLowerCase());
         tr.innerHTML =
@@ -1787,7 +1787,13 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
           "</td>" +
           '<td style="vertical-align:top;padding:8px 10px;">' +
           (function () {
-            var nm = fieldName(seg.name, field.index) || "";
+            if (unsupported) {
+              return (
+                '<span class="field-name schema-unsupported-name">' +
+                escText(seg.name + "-" + field.index) +
+                '</span><span class="schema-note">Not supported in current schema</span>'
+              );
+            }
             var desc = fieldDesc(seg.name, field.index);
             if (!desc) return escText(nm);
             return (
@@ -3169,10 +3175,32 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         return;
       }
       var title = customSampleTitle ? customSampleTitle.value.trim() : "";
-      if (!title) {
-        title = "Custom sample " + (Object.keys(loadCustomSamples()).length + 1);
-      }
       var custom = loadCustomSamples();
+      var selectedKey = selSample ? selSample.value || "" : "";
+      if (!title && /^custom_/.test(selectedKey) && custom[selectedKey]) {
+        var existingTitle = custom[selectedKey].title || "selected sample";
+        var ok = window.confirm(
+          'Overwrite "' + existingTitle + '" with the current HL7 message?'
+        );
+        if (!ok) return;
+        custom[selectedKey] = {
+          title: existingTitle,
+          message: message,
+          version: selVersion ? selVersion.value : currentVersion,
+          createdAt: custom[selectedKey].createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        saveCustomSamples(custom);
+        populateSamples(selectedKey);
+        saveSelectedSampleKey(selectedKey);
+        if (selVersion) saveSelectedVersion(selVersion.value);
+        window.location.hash = selectedKey;
+        showCopied("Sample overwritten");
+        return;
+      }
+      if (!title) {
+        title = "Custom sample " + (Object.keys(custom).length + 1);
+      }
       var key = customSampleKey();
       custom[key] = {
         title: title,
