@@ -775,6 +775,7 @@ body.dragging-col {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
   min-height: 30px;
   padding: 3px;
   border: 1px solid var(--border);
