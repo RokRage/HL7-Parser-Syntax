@@ -989,10 +989,10 @@ textarea {
   border-bottom: 1px solid var(--border);
 }
 .pane-breakdown .search-bar {
-  background: #f3f6fb;
+  background: #e8eef8;
 }
 body.dark .pane-breakdown .search-bar {
-  background: rgba(122, 162, 255, 0.055);
+  background: rgba(90, 134, 255, 0.14);
 }
 .search-help-toggle {
   display: none;
