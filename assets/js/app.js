@@ -17,6 +17,7 @@
 
   var currentVersion = "2.4";
   var currentModel = { delims: null, segments: [] };
+  var unsupportedFilterOn = false;
 
   // ================= CodeMirror setup (local bundled ESM) =================
   let cmView = null;
@@ -223,7 +224,10 @@
     function syncPlainSelection() {
       var head = plainEditor.selectionStart || 0;
       var lineNo = plainEditor.value.slice(0, head).split(/\r\n?|\n/).length;
-      highlightSegment(segIndexForText(plainEditor.value, lineNo));
+      var segIdx = segIndexForText(plainEditor.value, lineNo);
+      highlightSegment(segIdx);
+      var info = fieldIndexAtPlainPos(plainEditor.value, lineNo, head);
+      highlightBreakdownField(segIdx, info ? info.field : null);
     }
 
     plainEditor.addEventListener("click", syncPlainSelection);
@@ -242,6 +246,30 @@
     view.dispatch({
       effects: CM.hoverHighlightEffect.of({ from: from, to: to })
     });
+  }
+
+  function clearBreakdownFieldHighlight() {
+    var tree = document.getElementById("tree");
+    if (!tree) return;
+    var active = tree.querySelectorAll("tr.field-row.editor-active-field");
+    for (var i = 0; i < active.length; i++) {
+      active[i].classList.remove("editor-active-field");
+    }
+  }
+
+  function highlightBreakdownField(segIdx, fieldIndex) {
+    clearBreakdownFieldHighlight();
+    if (segIdx == null || fieldIndex == null || segIdx < 0) return;
+    var tree = document.getElementById("tree");
+    if (!tree) return;
+    var row = tree.querySelector(
+      'tr.field-row[data-seg-index="' + segIdx + '"][data-field-index="' + fieldIndex + '"]'
+    );
+    if (!row) return;
+    row.classList.add("editor-active-field");
+    if (row.offsetParent !== null) {
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
   }
 
   function fieldAtEditorPos(state, pos) {
@@ -305,11 +333,11 @@
 
     if (!index) return null;
     var nm = fieldName(seg, index);
-    if (!nm || !nm.trim()) return null;
+    var fieldLabel = nm && nm.trim() ? nm.trim() : "Not supported in current schema";
 
-    var label = seg + "-" + index + "  " + nm.trim();
+    var label = seg + "-" + index + "  " + fieldLabel;
     if (fieldStart == null || fieldEnd == null || fieldEnd <= fieldStart) {
-      return { label: label, from: null, to: null };
+      return { label: label, seg: seg, field: index, from: null, to: null };
     }
 
     var raw = text.slice(fieldStart, fieldEnd);
@@ -364,9 +392,37 @@
 
     return {
       label: label,
+      seg: seg,
+      field: index,
       from: line.from + fieldStart + chunkStart,
       to: line.from + fieldStart + chunkEnd
     };
+  }
+
+  function fieldIndexAtPlainPos(text, lineNo, pos) {
+    var lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+    var lineText = lines[lineNo - 1] || "";
+    var offset = pos;
+    for (var i = 0; i < lineNo - 1; i++) offset -= lines[i].length + 1;
+    var seg = lineText.slice(0, 3);
+    if (!/^[A-Z0-9]{3}$/.test(seg)) return null;
+    var fs = seg === "MSH" ? lineText.charAt(3) || "|" : "|";
+    var index = null;
+    if (seg === "MSH") {
+      if (offset === 3) index = 1;
+      else if (offset >= 4) {
+        index = 2;
+        for (var m = 4; m < lineText.length && m < offset; m++) {
+          if (lineText.charAt(m) === fs) index++;
+        }
+      }
+    } else if (offset >= 3) {
+      index = 0;
+      for (var n = 3; n < lineText.length && n <= offset; n++) {
+        if (lineText.charAt(n) === fs) index++;
+      }
+    }
+    return index ? { seg: seg, field: index } : null;
   }
 
   function showEditorHint(view, event) {
@@ -600,6 +656,27 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       },
       provide: f => CM.EditorView.decorations.from(f)
     });
+    CM.unsupportedFlashEffect = CM.StateEffect.define();
+    CM.unsupportedFlashField = CM.StateField.define({
+      create() { return CM.Decoration.none; },
+      update(decos, tr) {
+        decos = decos.map(tr.changes);
+        for (let e of tr.effects) {
+          if (e.is(CM.unsupportedFlashEffect)) {
+            if (!e.value || !e.value.length) return CM.Decoration.none;
+            return CM.Decoration.set(
+              e.value.map(function (range) {
+                return CM.Decoration.mark({ class: "cm-hl7-unsupported-flash" })
+                  .range(range.from, range.to);
+              }),
+              true
+            );
+          }
+        }
+        return decos;
+      },
+      provide: f => CM.EditorView.decorations.from(f)
+    });
 
     const host = document.getElementById("cmEditor");
     const startDoc = "";
@@ -617,6 +694,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         CM.highlightActiveLine(),
         CM.drawSelection(),
         CM.hoverHighlightField,
+        CM.unsupportedFlashField,
         CM.history(),
         CM.keymap.of([
           ...CM.defaultKeymap,
@@ -633,7 +711,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
           if (update.selectionSet) {
             var head = update.state.selection.main.head;
             var lineNo = update.state.doc.lineAt(head).number;
-            highlightSegment(segIndexForLine(update.state, lineNo));
+            var segIdx = segIndexForLine(update.state, lineNo);
+            highlightSegment(segIdx);
+            var info = fieldAtEditorPos(update.state, head);
+            highlightBreakdownField(segIdx, info ? info.field : null);
           }
         }),
         CM.EditorView.domEventHandlers({
@@ -1701,19 +1782,96 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     if (txt) txt.textContent = call;
   }
 
+  function updateBreakdownBadges(segmentCount, fieldCount, unsupportedCount) {
+    var segBadge = document.getElementById("badgeSeg");
+    var fldBadge = document.getElementById("badgeFld");
+    var unsupportedBadge = document.getElementById("badgeUnsupported");
+    if (segBadge) {
+      segBadge.textContent = segmentCount + " segment" + (segmentCount === 1 ? "" : "s");
+    }
+    if (fldBadge) {
+      fldBadge.textContent = fieldCount + " field" + (fieldCount === 1 ? "" : "s");
+    }
+    if (unsupportedBadge) {
+      unsupportedBadge.hidden = !unsupportedCount;
+      if (!unsupportedCount) {
+        unsupportedFilterOn = false;
+        unsupportedBadge.classList.remove("active");
+      }
+      unsupportedBadge.textContent = unsupportedCount + " unsupported";
+      unsupportedBadge.title =
+        unsupportedCount + " field" + (unsupportedCount === 1 ? "" : "s") +
+        " not supported in the current HL7 schema";
+    }
+  }
+
+  function fieldRangeInLine(lineText, fieldIndex, delims) {
+    var sep = (delims && delims.field) || "|";
+    var seps = [];
+    for (var i = 0; i < lineText.length; i++) {
+      if (lineText.charAt(i) === sep) seps.push(i);
+    }
+    if (lineText.slice(0, 3) === "MSH") {
+      if (fieldIndex === 1) return { from: 3, to: Math.min(4, lineText.length) };
+      if (fieldIndex >= 2) {
+        var mshStartSep = seps[fieldIndex - 2];
+        if (mshStartSep == null) return null;
+        return {
+          from: mshStartSep + 1,
+          to: seps[fieldIndex - 1] == null ? lineText.length : seps[fieldIndex - 1]
+        };
+      }
+    }
+    var startSep = seps[fieldIndex - 1];
+    if (startSep == null) return null;
+    return {
+      from: startSep + 1,
+      to: seps[fieldIndex] == null ? lineText.length : seps[fieldIndex]
+    };
+  }
+
+  function unsupportedEditorRanges(rows) {
+    if (!cmView || !rows || !rows.length) return [];
+    var doc = cmView.state.doc;
+    var lineBySegIndex = {};
+    var segIndex = -1;
+    for (var lineNo = 1; lineNo <= doc.lines; lineNo++) {
+      var line = doc.line(lineNo);
+      if (!line.text.trim()) continue;
+      segIndex++;
+      lineBySegIndex[String(segIndex)] = line;
+    }
+    var ranges = [];
+    rows.forEach(function (row) {
+      var line = lineBySegIndex[row.getAttribute("data-seg-index") || ""];
+      if (!line) return;
+      var fieldIndex = parseInt(row.getAttribute("data-field-index"), 10);
+      var local = fieldRangeInLine(line.text, fieldIndex, currentModel.delims);
+      if (!local || local.to <= local.from) return;
+      ranges.push({ from: line.from + local.from, to: line.from + local.to });
+    });
+    return ranges;
+  }
+
+  function setUnsupportedEditorHighlight(rows) {
+    if (!cmView || !CM || !CM.unsupportedFlashEffect) return;
+    var ranges = rows && rows.length ? unsupportedEditorRanges(rows) : [];
+    cmView.dispatch({ effects: CM.unsupportedFlashEffect.of(ranges) });
+  }
+
   function renderTree(model) {
     var tree = document.getElementById("tree");
     tree.innerHTML = "";
     if (!model || model.segments.length === 0) {
       tree.innerHTML =
         '<p class="muted">Nothing to show yet. Paste an HL7 message to parse it automatically.</p>';
-      document.getElementById("badgeSeg").textContent = "0 segments";
-      document.getElementById("badgeFld").textContent = "0 fields";
+      updateBreakdownBadges(0, 0, 0);
       return;
     }
 
     var segCount = model.segments.length;
     var fieldCount = 0;
+    var unsupportedCount = 0;
     var segmentTotals = {};
     var segmentSeen = {};
     for (var st = 0; st < model.segments.length; st++) {
@@ -1771,9 +1929,11 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         var nm = fieldName(seg.name, field.index) || "";
         var unsupported = !nm.trim();
         fieldCount++;
+        if (unsupported) unsupportedCount++;
         var tr = document.createElement("tr");
         tr.className = "field-row" + (unsupported ? " schema-unsupported" : "");
         tr.setAttribute("data-seg", seg.name);
+        tr.setAttribute("data-seg-index", String(si));
         tr.setAttribute("data-field-index", String(field.index));
         tr.setAttribute(
           "data-field-name",
@@ -1848,10 +2008,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       tree.appendChild(card);
     }
 
-    document.getElementById("badgeSeg").textContent =
-      segCount + " segment" + (segCount === 1 ? "" : "s");
-    document.getElementById("badgeFld").textContent =
-      fieldCount + " field" + (fieldCount === 1 ? "" : "s");
+    updateBreakdownBadges(segCount, fieldCount, unsupportedCount);
 
     wireEditingHandlers();
     applySearchFilter();
@@ -1945,6 +2102,10 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
   function applyPathFilter(p) {
     var tree = document.getElementById("tree");
     if (!tree) return;
+    unsupportedFilterOn = false;
+    setUnsupportedEditorHighlight([]);
+    var unsupportedBadge = document.getElementById("badgeUnsupported");
+    if (unsupportedBadge) unsupportedBadge.classList.remove("active");
     clearPathHits(tree);
 
     var cards = Array.prototype.slice.call(
@@ -1952,6 +2113,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     );
     var visibleFields = 0;
     var visibleSegments = 0;
+    var visibleUnsupported = 0;
     var scrollTarget = null;
 
     cards.forEach(function (card) {
@@ -1964,6 +2126,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         tr.style.display = ok ? "" : "none";
         if (ok) {
           visibleFields++;
+          if (tr.classList.contains("schema-unsupported")) visibleUnsupported++;
           anyVisible = true;
           tr.classList.add("path-hit");
           scrollTarget = scrollTarget || tr;
@@ -1994,13 +2157,46 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
       if (anyVisible) visibleSegments++;
     });
 
-    document.getElementById("badgeSeg").textContent =
-      visibleSegments + " segment" + (visibleSegments === 1 ? "" : "s");
-    document.getElementById("badgeFld").textContent =
-      visibleFields + " field" + (visibleFields === 1 ? "" : "s");
+    updateBreakdownBadges(visibleSegments, visibleFields, visibleUnsupported);
 
     if (scrollTarget)
       scrollTarget.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  function applyUnsupportedFilter(shouldFlash) {
+    var tree = document.getElementById("tree");
+    if (!tree) return;
+    clearPathHits(tree);
+
+    var cards = Array.prototype.slice.call(
+      tree.getElementsByClassName("segment-card")
+    );
+    var visibleFields = 0;
+    var visibleSegments = 0;
+    var unsupportedRows = [];
+
+    cards.forEach(function (card) {
+      var rows = Array.prototype.slice.call(card.querySelectorAll("tr.field-row"));
+      var anyVisible = false;
+      rows.forEach(function (tr) {
+        var ok = tr.classList.contains("schema-unsupported");
+        tr.style.display = ok ? "" : "none";
+        tr.classList.toggle("path-hit", ok);
+        if (ok) {
+          visibleFields++;
+          anyVisible = true;
+          unsupportedRows.push(tr);
+        }
+      });
+      card.style.display = anyVisible ? "" : "none";
+      if (anyVisible) visibleSegments++;
+    });
+
+    updateBreakdownBadges(visibleSegments, visibleFields, visibleFields);
+    if (unsupportedRows.length) {
+      unsupportedRows[0].scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    if (shouldFlash || unsupportedFilterOn) setUnsupportedEditorHighlight(unsupportedRows);
   }
 
   function applySearchFilter() {
@@ -2009,6 +2205,11 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
     var tree = document.getElementById("tree");
     if (!tree) return;
+    if (unsupportedFilterOn) {
+      applyUnsupportedFilter(false);
+      return;
+    }
+    setUnsupportedEditorHighlight([]);
 
     var pathQ = parsePathQuery(rawVal);
     if (pathQ) {
@@ -2025,6 +2226,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
     var visibleFields = 0;
     var visibleSegments = 0;
+    var visibleUnsupported = 0;
 
     cards.forEach(function (card) {
       var rows = Array.prototype.slice.call(
@@ -2050,17 +2252,17 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
           breakdownText.includes(q);
 
         tr.style.display = ok ? "" : "none";
-        if (ok) visibleFields++;
+        if (ok) {
+          visibleFields++;
+          if (tr.classList.contains("schema-unsupported")) visibleUnsupported++;
+        }
         anyVisible = anyVisible || ok;
       });
       card.style.display = anyVisible ? "" : "none";
       if (anyVisible) visibleSegments++;
     });
 
-    document.getElementById("badgeSeg").textContent =
-      visibleSegments + " segment" + (visibleSegments === 1 ? "" : "s");
-    document.getElementById("badgeFld").textContent =
-      visibleFields + " field" + (visibleFields === 1 ? "" : "s");
+    updateBreakdownBadges(visibleSegments, visibleFields, visibleUnsupported);
   }
 
   function wireEditingHandlers() {
@@ -3236,6 +3438,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
 
     function loadInitialMessage() {
       var storedMsg = loadStoredMessage();
+      var savedVersion = loadSelectedVersion();
 
       // Populate sample dropdown
       populateSamples(loadSelectedSampleKey());
@@ -3246,13 +3449,17 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         if (selSample) selSample.value = hash;
         saveSelectedSampleKey(hash);
         loadSelectedSample();
+        if (savedVersion && selVersion) {
+          selVersion.value = savedVersion;
+          currentVersion = selVersion.value;
+          parseNow();
+        }
       } else if (storedMsg && storedMsg.trim()) {
         var savedSample = loadSelectedSampleKey();
         if (savedSample && selSample && getSampleMessage(savedSample)) {
           selSample.value = savedSample;
           syncSampleControls();
         }
-        var savedVersion = loadSelectedVersion();
         if (savedVersion && selVersion) {
           selVersion.value = savedVersion;
           currentVersion = selVersion.value;
@@ -3261,6 +3468,12 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         parseNow();
       } else {
         loadSelectedSample();
+        if (savedVersion && selVersion) {
+          selVersion.value = savedVersion;
+          currentVersion = selVersion.value;
+          saveSelectedVersion(currentVersion);
+          parseNow();
+        }
       }
     }
 
@@ -3301,7 +3514,35 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     syncRestorePidButton();
 
     var fldSearch = document.getElementById("fldSearch");
-    if (fldSearch) fldSearch.addEventListener("input", applySearchFilter);
+    if (fldSearch) {
+      fldSearch.addEventListener("input", function () {
+        unsupportedFilterOn = false;
+        var badge = document.getElementById("badgeUnsupported");
+        if (badge) badge.classList.remove("active");
+        applySearchFilter();
+      });
+    }
+    var badgeUnsupported = document.getElementById("badgeUnsupported");
+    if (badgeUnsupported) {
+      function toggleUnsupportedFilter() {
+        if (badgeUnsupported.hidden) return;
+        unsupportedFilterOn = !unsupportedFilterOn;
+        badgeUnsupported.classList.toggle("active", unsupportedFilterOn);
+        if (unsupportedFilterOn && fldSearch) fldSearch.value = "";
+        if (unsupportedFilterOn) applyUnsupportedFilter(true);
+        else {
+          setUnsupportedEditorHighlight([]);
+          applySearchFilter();
+        }
+      }
+      badgeUnsupported.addEventListener("click", toggleUnsupportedFilter);
+      badgeUnsupported.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleUnsupportedFilter();
+        }
+      });
+    }
 
     function loadSelectedSample() {
       clearOriginalPidMessage();

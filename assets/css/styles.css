@@ -874,6 +874,41 @@ body.dark .badge {
   color: #cfe0ff;
   border-color: #2a3b63;
 }
+.badge-warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.42);
+  cursor: pointer;
+  user-select: none;
+}
+body.dark .badge-warn {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.46);
+}
+.badge-warn.active {
+  background: rgba(239, 68, 68, 0.18);
+  color: #991b1b;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.22), inset 0 0 0 1px rgba(239, 68, 68, 0.18);
+}
+body.dark .badge-warn.active {
+  background: rgba(239, 68, 68, 0.24);
+  color: #fecaca;
+  border-color: #f87171;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3), inset 0 0 0 1px rgba(248, 113, 113, 0.18);
+}
+.badge-warn:hover,
+.badge-warn:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+  outline: none;
+}
+.badge-warn.active:hover,
+.badge-warn.active:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.28), inset 0 0 0 1px rgba(239, 68, 68, 0.22);
+}
 
 /* Breakdown */
 .tree {
@@ -2358,12 +2393,33 @@ tr.field-row.path-hit > td {
 tr.field-row.path-hit > td:first-child {
   box-shadow: inset 3px 0 0 var(--accent);
 }
+tr.field-row.editor-active-field > td {
+  background: rgba(37, 99, 235, 0.12);
+}
+tr.field-row.editor-active-field > td:first-child {
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+body.dark tr.field-row.editor-active-field > td {
+  background: rgba(96, 165, 250, 0.14);
+}
 .copy-path.path-hit {
   border-style: solid;
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-ghost);
   font-weight: 700;
+}
+.cm-hl7-unsupported-flash {
+  animation: unsupported-field-flash 0.75s ease-in-out infinite;
+  border-radius: 3px;
+}
+@keyframes unsupported-field-flash {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.08);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.42);
+  }
 }
 
 /* Copy-to-clipboard buttons (ObjectScript paths) */

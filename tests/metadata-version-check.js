@@ -53,5 +53,7 @@ assert(
   "unsupported schema note should be rendered"
 );
 assert(cssSource.includes(".segment-card tr.schema-unsupported"), "unsupported schema CSS should exist");
+assert(appSource.includes('SELECTED_VERSION_KEY = "hl7_selected_version"'), "selected version storage key should exist");
+assert(appSource.includes("saveSelectedVersion(currentVersion);"), "selected version should be persisted");
 
 console.log("HL7 version metadata checks passed");
