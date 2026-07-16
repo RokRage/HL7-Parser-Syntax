@@ -1883,6 +1883,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
     var unsupportedBadge = document.getElementById("badgeUnsupported");
     if (segBadge) {
       segBadge.textContent = segmentCount + " segment" + (segmentCount === 1 ? "" : "s");
+      segBadge.dataset.mobileLabel = segmentCount + " segs";
     }
     if (fldBadge) {
       fldBadge.textContent = fieldCount + " field" + (fieldCount === 1 ? "" : "s");
@@ -1894,6 +1895,7 @@ function createHL7Highlighter({ RangeSetBuilder, Decoration, EditorView }) {
         unsupportedBadge.classList.remove("active");
       }
       unsupportedBadge.textContent = unsupportedCount + " unsupported";
+      unsupportedBadge.dataset.mobileLabel = unsupportedCount + " issues";
       unsupportedBadge.title =
         unsupportedCount + " field" + (unsupportedCount === 1 ? "" : "s") +
         " not supported in the current HL7 schema";

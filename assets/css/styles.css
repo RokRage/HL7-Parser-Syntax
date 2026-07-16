@@ -3134,3 +3134,54 @@ body.dark .cm-hl7-sub { color: #ff9aa2; }
 body.dark .cm-hl7-esc { color: #c7a0ff; }
 body.dark .cm-hl7-dtm { color: #6ee7d2; }
 body.dark .cm-hl7-id  { color: #aab2c7; }
+
+/* Mobile Breakdown header: contain wrapped status badges and keep focus controls desktop-only. */
+@media (max-width: 1200px) {
+  .pane .pane-toggle {
+    display: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  body .pane-breakdown > header,
+  body.ui-density-compact .pane-breakdown > header,
+  body.ui-density-spacious .pane-breakdown > header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    height: auto;
+    min-height: 50px;
+    padding: 10px 12px;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .pane-breakdown > header h2 {
+    padding-top: 4px;
+  }
+
+  .pane-breakdown .pane-controls,
+  .pane-breakdown .meta {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .pane-breakdown .pane-controls {
+    display: block;
+  }
+
+  .pane-breakdown .meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .pane-breakdown .badge[data-mobile-label] {
+    font-size: 0;
+  }
+
+  .pane-breakdown .badge[data-mobile-label]::after {
+    content: attr(data-mobile-label);
+    font-size: 11px;
+  }
+}
