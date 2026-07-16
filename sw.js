@@ -1,9 +1,9 @@
-const CACHE_VERSION = "hl7-message-explorer-v17";
+const CACHE_VERSION = "hl7-message-explorer-v18";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./assets/css/styles.css?v=callout-neon-2",
+  "./assets/css/styles.css?v=callout-neon-3",
   "./assets/js/app.js?v=subfield-highlight-2",
   "./assets/js/hl7-fields-2x.js",
   "./assets/js/hl7-datatypes-2x.js",
