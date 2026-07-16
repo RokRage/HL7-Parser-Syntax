@@ -3230,8 +3230,7 @@ body.dark .cm-hl7-id  { color: #aab2c7; }
     transition: transform 0.15s ease;
   }
 
-  .pane-breakdown:not(.search-help-expanded) #searchHint,
-  .pane-breakdown:not(.search-help-expanded) #breakdownTip {
+  .pane-breakdown:not(.search-help-expanded) #searchHint {
     display: none;
   }
 
@@ -3239,8 +3238,7 @@ body.dark .cm-hl7-id  { color: #aab2c7; }
     transform: rotate(180deg);
   }
 
-  .pane-breakdown.search-help-expanded #searchHint,
-  .pane-breakdown.search-help-expanded #breakdownTip {
+  .pane-breakdown.search-help-expanded #searchHint {
     display: block;
   }
 
@@ -3250,9 +3248,4 @@ body.dark .cm-hl7-id  { color: #aab2c7; }
     line-height: 1.2;
   }
 
-  #breakdownTip {
-    padding: 5px 10px 7px;
-    font-size: 11px;
-    line-height: 1.3;
-  }
 }
