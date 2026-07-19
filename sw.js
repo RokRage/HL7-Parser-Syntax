@@ -1,4 +1,4 @@
-const CACHE_VERSION = "hl7-message-explorer-v0.0007";
+const CACHE_VERSION = "hl7-message-explorer-v0.0008";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,7 +12,9 @@ const APP_SHELL = [
   "./assets/vendor/codemirror/codemirror.bundle.js",
   "./assets/vendor/material-symbols/material-symbols-rounded.css",
   "./assets/vendor/material-symbols/material-symbols-rounded-subset.woff2",
-  "./assets/dude_sqizzle_shaded.svg"
+  "./assets/dude_sqizzle_solid-180.png",
+  "./assets/dude_sqizzle_solid-192.png",
+  "./assets/dude_sqizzle_solid-512.png"
 ];
 
 self.addEventListener("install", function (event) {

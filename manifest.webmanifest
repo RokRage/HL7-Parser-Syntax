@@ -10,10 +10,16 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "assets/dude_sqizzle_shaded.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "assets/dude_sqizzle_solid-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/dude_sqizzle_solid-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
